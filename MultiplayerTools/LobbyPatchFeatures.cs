@@ -16,6 +16,7 @@ namespace MultiplayerTools.Patches
     {
         public static MySliderUI MaxPlayerSlider;
         public static Il2CppTMPro.TMP_InputField CustomLobbyNameInput;
+        public static Toggle EnableGuestBangCommandsToggle;
 
         public static string GetInputLobbyName()
         {
@@ -97,60 +98,76 @@ namespace MultiplayerTools.Patches
             }
 
             Toggle publicLobbyToggle = instance.publicLobbyToggle;
-            if (publicLobbyToggle != null)
+            (MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : publicLobbyToggle.group.m_Toggles[0]).isOn = true;
+            publicLobbyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
             {
-                if (MultiplayerToolsCore.IsPublicLobby)
-                {
-                    publicLobbyToggle.isOn = true;
-                }
-                else
-                {
-                    publicLobbyToggle.group.m_Toggles[0].isOn = true;
-                }
-                publicLobbyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-                {
-                    MultiplayerToolsCore.SetIsPublicLobby(isOn);
-                }));
-            }
+                MultiplayerToolsCore.SetIsPublicLobby(isOn);
+            }));
+
 
             Toggle passwordProtectedToggle = instance.passwordProtectedToggle;
-            if (passwordProtectedToggle != null)
+            passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
+            passwordProtectedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
             {
-                passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
-                passwordProtectedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-                {
-                    MultiplayerToolsCore.SetIsPasswordProtected(isOn);
-                }));
-            }
+                MultiplayerToolsCore.SetIsPasswordProtected(isOn);
+            }));
+
 
             TMP_InputField passwordInputField = instance.passwordInputField;
-            if (passwordInputField != null)
+            passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
+            passwordInputField.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
             {
-                passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
-                passwordInputField.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
-                {
-                    MultiplayerToolsCore.SetLobbyPassword(text);
-                }));
-            }
+                MultiplayerToolsCore.SetLobbyPassword(text);
+            }));
+
 
             Toggle peacefulModeToggle = instance.peacefulModeToggle;
-            if (peacefulModeToggle != null)
+            peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
+            peacefulModeToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
             {
-                peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
-                peacefulModeToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-                {
-                    MultiplayerToolsCore.SetIsPeacefulMode(isOn);
-                }));
-            }
+                MultiplayerToolsCore.SetIsPeacefulMode(isOn);
+            }));
+            
 
             Toggle textChatOnlyToggle = instance.textChatOnlyToggle;
-            if (textChatOnlyToggle != null)
+            textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
+            textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
             {
-                textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
-                textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                MultiplayerToolsCore.SetIsTextChatOnly(isOn);
+            }));
+
+
+            if (EnableGuestBangCommandsToggle == null)
+            {
+                var cloneGO = Object.Instantiate(textChatOnlyToggle.gameObject, textChatOnlyToggle.transform.parent);
+                cloneGO.name = "EnableGuestBangCommandsToggle";
+                cloneGO.transform.SetSiblingIndex(textChatOnlyToggle.transform.GetSiblingIndex() + 1);
+
+                var cloneToggle = cloneGO.GetComponent<Toggle>();
+                if (cloneToggle != null)
                 {
-                    MultiplayerToolsCore.SetIsTextChatOnly(isOn);
-                }));
+                    cloneToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                    cloneToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                    {
+                        MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
+                    }));
+
+                    var label = cloneGO.GetComponentInChildren<TMP_Text>(true);
+                    if (label != null)
+                    {
+                        var loc = label.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
+                        if (loc != null)
+                            Object.Destroy(loc);
+                        label.text = "Enable Guest Bang Commands";
+                    }
+
+                    cloneGO.SetActive(true);
+                    EnableGuestBangCommandsToggle = cloneToggle;
+                }
+            }
+            else
+            {
+                EnableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
             }
         }
 

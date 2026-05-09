@@ -2,7 +2,7 @@ using Il2Cpp;
 using Il2CppFishNet.Connection;
 using Object = UnityEngine.Object;
 
-namespace MultiplayerTools.Patches
+namespace MultiplayerTools
 {
     internal static class Utils
     {

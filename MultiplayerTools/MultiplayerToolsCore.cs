@@ -1,6 +1,7 @@
 using System;
 using System.Collections;
 using System.Linq;
+using HarmonyLib;
 using Il2Cpp;
 using MelonLoader;
 using MelonLoader.NativeUtils;
@@ -14,9 +15,12 @@ namespace MultiplayerTools
     public class MultiplayerToolsCore : MelonMod
     {
         public static MultiplayerToolsCore Instance;
+        private PlayerReference localPlayer;
+        private PlayerReference[] players = (PlayerReference[])(object)new PlayerReference[0];
+        public static bool isHost = false;
 
         private static MelonPreferences_Category _preferences;
-        private static MelonPreferences_Entry<bool> _enableChatCommands;
+        private static MelonPreferences_Entry<bool> _enableGuestBangCommands;
         private static MelonPreferences_Entry<string> _serverName;
         private static MelonPreferences_Entry<int> _serverCapacity;
         private static MelonPreferences_Entry<bool> _isPublicLobby;
@@ -25,7 +29,7 @@ namespace MultiplayerTools
         private static MelonPreferences_Entry<bool> _isPeacefulMode;
         private static MelonPreferences_Entry<bool> _isTextChatOnly;
 
-        public static bool EnableChatCommands => _enableChatCommands?.Value ?? true;
+        public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
         public static int ServerCapacity => _serverCapacity?.Value ?? 8;
         public static bool IsPublicLobby => _isPublicLobby?.Value ?? true;
@@ -47,7 +51,7 @@ namespace MultiplayerTools
             Instance = this;
 
             _preferences = MelonPreferences.CreateCategory("MultiplayerTools", "MultiplayerTools");
-            _enableChatCommands = _preferences.CreateEntry("EnableChatCommands", true, "Enable Chat Commands", "Enable bang chat commands like !tp.");
+            _enableGuestBangCommands = _preferences.CreateEntry("EnableGuestBangCommands", true, "Enable Guest Bang Commands", "Allow non-host players to use custom bang chat commands like !tp.");
             _serverName = _preferences.CreateEntry("ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
             _serverCapacity = _preferences.CreateEntry("ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
             _isPublicLobby = _preferences.CreateEntry("IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
@@ -64,6 +68,72 @@ namespace MultiplayerTools
         {
             ReferencesLoaded = false;
             MelonCoroutines.Start(LoadReferences());
+        }
+
+        [HarmonyPatch(typeof(PlayerReferenceManager), "OnPlayerReferenceAdded")]
+        public static class PlayerJoinPatch
+        {
+            private static void Postfix(PlayerReferenceManager __instance, int index)
+            {
+                PlayerReference val = __instance.GetPlayerReferences()[index];
+                if (val.IsLocalPlayerInstance())
+                {
+                    Instance.localPlayer = val;
+                    if (Utils.FindHostPlayer() == val.PlayerControl)
+                    {
+                        isHost = true;
+                    }
+                }
+                Instance.PlayerJoinedGame(val);
+            }
+        }
+
+        [HarmonyPatch(typeof(PlayerReferenceManager), "OnPlayerReferenceRemoved")]
+        public static class PlayerLeavePatch
+        {
+            private static void Postfix(PlayerReferenceManager __instance, int index)
+            {
+                Instance.PlayerLeftGame(index);
+            }
+        }
+        public void PlayerJoinedGame(PlayerReference p)
+        {
+            players.SetValue(p, players.Length);
+            if (p.IsLocalPlayerInstance())
+            {
+                localPlayer = p;
+            }
+        }
+
+        public void PlayerLeftGame(int index)
+        {
+            if (index >= 0 && index < players.Length)
+            {
+                if (players[index].IsLocalPlayerInstance())
+                {
+                    localPlayer = null;
+                    isHost = false;
+                }
+                players[index] = null;
+            }
+        }
+
+        public PlayerReference GetLocalPlayer()
+        {
+            if (localPlayer == null)
+            {
+                return null;
+            }
+            return localPlayer;
+        }
+
+        public static void SetEnableGuestBangCommands(bool value)
+        {
+            if (_enableGuestBangCommands == null)
+                return;
+
+            _enableGuestBangCommands.Value = value;
+            MelonPreferences.Save();
         }
 
         public static void SetServerName(string value)

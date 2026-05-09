@@ -60,7 +60,7 @@ namespace MultiplayerTools.Patches
         [HarmonyPrefix]
         private static bool ChatManager_ProcessChatInput_Prefix(ChatManager __instance)
         {
-            if (!MultiplayerToolsCore.EnableChatCommands)
+            if (!MultiplayerToolsCore.isHost)
                 return true;
 
             var chatBox = __instance.chatBox;
@@ -100,7 +100,7 @@ namespace MultiplayerTools.Patches
         [HarmonyPrefix]
         private static bool ChatManager_OnServerReceivedChatBroadcastFromClient_Prefix(NetworkConnection networkConnection, ChatMessage chatMessage, byte channel)
         {
-            if (!MultiplayerToolsCore.EnableChatCommands)
+            if (!MultiplayerToolsCore.EnableGuestBangCommands)
                 return true;
 
             if (!InstanceFinder.IsServerStarted)
