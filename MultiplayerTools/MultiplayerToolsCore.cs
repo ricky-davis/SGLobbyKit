@@ -1,32 +1,10 @@
-using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using HarmonyLib;
-using Il2Cpp;
-using Il2CppFishNet.Object;
-using Il2CppFishNet.Object.Synchronizing;
-using Il2CppInterop.Runtime;
-using Il2CppInterop.Runtime.InteropTypes;
-using Il2CppInterop.Runtime.InteropTypes.Arrays;
-using Il2Cpp_Scripts.Managers;
-using MelonLoader;
-using MelonLoader.Preferences;
-using UnityEngine;
-using UnityEngine.Rendering;
-using Input = UnityEngine.Input;
-using static UnityEngine.Application;
-using Object = UnityEngine.Object;
-using static Il2Cpp.Hat;
-using System.Reflection;
-using Il2CppPlayEveryWare.EpicOnlineServices.Samples;
-using System.Runtime.InteropServices;
-using MelonLoader.NativeUtils;
-using Il2CppInterop.Common;
-using Il2CppMono.Security.X509;
-using Il2Cpp_Scripts.Systems.Chat;
 
+using System.Collections;
+using Il2Cpp;
+using MelonLoader;
+using UnityEngine;
+using Object = UnityEngine.Object;
+using MelonLoader.NativeUtils;
 
 [assembly: MelonInfo(typeof(MultiplayerTools.MultiplayerToolsCore), "MultiplayerTools", "0.1.0", "Spyci")]
 

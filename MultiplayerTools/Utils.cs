@@ -1,8 +1,6 @@
-using System;
 using Il2Cpp;
 using Il2CppFishNet.Connection;
-using Il2Cpp_Scripts.Managers;
-using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace MultiplayerTools.Patches
 {
