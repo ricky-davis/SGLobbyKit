@@ -13,25 +13,30 @@ namespace MultiplayerTools
 {
     public class MultiplayerToolsCore : MelonMod
     {
-        private delegate void OnCreateLobbyCompletedDelegate(IntPtr __this, IntPtr createLobbyCallbackInfo, IntPtr methodInfo);
-
-        private static OnCreateLobbyCompletedDelegate _detourDelegate;
-        private static NativeHook<OnCreateLobbyCompletedDelegate> _hook;
-
-        public interface IArbitrary
-        {
-            string Format();
-        }
-
         public static MultiplayerToolsCore Instance;
 
-        private PlayerReferenceManager playerReferenceManager;
-        private PlayerReference localPlayer;
-        private PlayerReference[] players = (PlayerReference[])(object)new PlayerReference[0];
-        private GameObject[] espObjects = Array.Empty<GameObject>();
+        private static MelonPreferences_Category _preferences;
+        private static MelonPreferences_Entry<bool> _enableChatCommands;
+        private static MelonPreferences_Entry<string> _serverName;
+        private static MelonPreferences_Entry<int> _serverCapacity;
+        private static MelonPreferences_Entry<bool> _isPublicLobby;
+        private static MelonPreferences_Entry<bool> _isPasswordProtected;
+        private static MelonPreferences_Entry<string> _lobbyPassword;
+        private static MelonPreferences_Entry<bool> _isPeacefulMode;
+        private static MelonPreferences_Entry<bool> _isTextChatOnly;
 
-        public bool referencesLoaded = false;
+        public static bool EnableChatCommands => _enableChatCommands?.Value ?? true;
+        public static string ServerName => _serverName?.Value ?? string.Empty;
+        public static int ServerCapacity => _serverCapacity?.Value ?? 8;
+        public static bool IsPublicLobby => _isPublicLobby?.Value ?? true;
+        public static bool IsPasswordProtected => _isPasswordProtected?.Value ?? false;
+        public static string LobbyPassword => _lobbyPassword?.Value ?? string.Empty;
+        public static bool IsPeacefulMode => _isPeacefulMode?.Value ?? false;
+        public static bool IsTextChatOnly => _isTextChatOnly?.Value ?? false;
 
+        private PlayerReferenceManager _playerReferenceManager;
+
+        public bool ReferencesLoaded = false;
         public void SavePrefs()
         {
             MelonPreferences.Save();
@@ -40,43 +45,104 @@ namespace MultiplayerTools
         public override unsafe void OnInitializeMelon()
         {
             Instance = this;
+
+            _preferences = MelonPreferences.CreateCategory("MultiplayerTools", "MultiplayerTools");
+            _enableChatCommands = _preferences.CreateEntry("EnableChatCommands", true, "Enable Chat Commands", "Enable bang chat commands like !tp.");
+            _serverName = _preferences.CreateEntry("ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
+            _serverCapacity = _preferences.CreateEntry("ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
+            _isPublicLobby = _preferences.CreateEntry("IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
+            _isPasswordProtected = _preferences.CreateEntry("IsPasswordProtected", false, "Password Protected", "Saved default for password protection.");
+            _lobbyPassword = _preferences.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
+            _isPeacefulMode = _preferences.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
+            _isTextChatOnly = _preferences.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+            MelonPreferences.Save();
+
             HarmonyInstance.PatchAll();
         }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
-            referencesLoaded = false;
+            ReferencesLoaded = false;
             MelonCoroutines.Start(LoadReferences());
+        }
+
+        public static void SetServerName(string value)
+        {
+            if (_serverName == null)
+                return;
+
+            _serverName.Value = value ?? string.Empty;
+            MelonPreferences.Save();
+        }
+
+        public static void SetServerCapacity(int value)
+        {
+            if (_serverCapacity == null)
+                return;
+
+            _serverCapacity.Value = Math.Clamp(value, 1, 64);
+            MelonPreferences.Save();
+        }
+
+        public static void SetIsPublicLobby(bool value)
+        {
+            if (_isPublicLobby == null)
+                return;
+            _isPublicLobby.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetIsPasswordProtected(bool value)
+        {
+            if (_isPasswordProtected == null)
+                return;
+            _isPasswordProtected.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetLobbyPassword(string value)
+        {
+            if (_lobbyPassword == null)
+                return;
+            _lobbyPassword.Value = value ?? string.Empty;
+            MelonPreferences.Save();
+        }
+
+        public static void SetIsPeacefulMode(bool value)
+        {
+            if (_isPeacefulMode == null)
+                return;
+            _isPeacefulMode.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetIsTextChatOnly(bool value)
+        {
+            if (_isTextChatOnly == null)
+                return;
+            _isTextChatOnly.Value = value;
+            MelonPreferences.Save();
         }
 
         private IEnumerator LoadReferences()
         {
-            while ((Object)(object)playerReferenceManager == (Object)null)
+            while ((Object)(object)_playerReferenceManager == (Object)null)
             {
-                playerReferenceManager = PlayerReferenceManager.Instance;
+                _playerReferenceManager = PlayerReferenceManager.Instance;
+                yield return null;
+            }
+            List<StatueSetup> statueSetups = null;
+            while (statueSetups == null || statueSetups.Count == 0)
+            {
+                statueSetups = ((IEnumerable<StatueSetup>)Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0)).ToList();
+                Debug.Log("[Core] Waiting for scene references to load...");
+                Debug.Log("Count: " + statueSetups.Count);
                 yield return null;
             }
 
             Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0).ToList();
-            referencesLoaded = true;
-            Patches.LobbyPatchFeatures.SetReferences(playerReferenceManager);
-            Debug.Log("Loaded references.");
-        }
-
-        public override void OnUpdate()
-        {
-            if (localPlayer == null || localPlayer.PlayerControl == null)
-                return;
-        }
-
-        public PlayerReference GetLocalPlayer()
-        {
-            return localPlayer;
-        }
-
-        public PlayerReference[] GetPlayers()
-        {
-            return (PlayerReference[])playerReferenceManager.GetPlayerReferences().Collection.ToArray();
+            ReferencesLoaded = true;
+            Debug.Log("[Core] Scene references loaded successfully.");
         }
     }
 }

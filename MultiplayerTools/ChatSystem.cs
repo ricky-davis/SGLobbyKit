@@ -1,3 +1,5 @@
+using System;
+using System.Collections.Generic;
 using HarmonyLib;
 using Il2Cpp;
 using Il2CppFishNet;
@@ -5,13 +7,15 @@ using Il2CppFishNet.Connection;
 using Il2Cpp_Scripts.Systems.Chat;
 using UnityEngine;
 using Object = UnityEngine.Object;
+using MelonLoader;
+using Il2CppFishNet.Object.Synchronizing;
 
 namespace MultiplayerTools.Patches
 {
     [HarmonyPatch]
     public static class ChatSystem
     {
-        public static PlayerReference fakePlayerReference;
+        private static PlayerReference _fakePlayerReference;
 
         private struct CommandStamp
         {
@@ -23,8 +27,11 @@ namespace MultiplayerTools.Patches
 
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
         [HarmonyPrefix]
-        private static bool ProcessChatInput_Prefix(ChatManager __instance)
+        private static bool ChatManager_ProcessChatInput_Prefix(ChatManager __instance)
         {
+            if (!MultiplayerToolsCore.EnableChatCommands)
+                return true;
+
             var chatBox = __instance.chatBox;
             if (chatBox == null)
                 return true;
@@ -58,8 +65,11 @@ namespace MultiplayerTools.Patches
 
         [HarmonyPatch(typeof(ChatManager), "OnServerReceivedChatBroadcastFromClient")]
         [HarmonyPrefix]
-        private static bool ServerReceive_Prefix(NetworkConnection networkConnection, ChatMessage chatMessage, byte channel)
+        private static bool ChatManager_OnServerReceivedChatBroadcastFromClient_Prefix(NetworkConnection networkConnection, ChatMessage chatMessage, byte channel)
         {
+            if (!MultiplayerToolsCore.EnableChatCommands)
+                return true;
+
             if (!InstanceFinder.IsServerStarted)
                 return true;
 
@@ -86,21 +96,46 @@ namespace MultiplayerTools.Patches
             return false;
         }
 
+
+        [HarmonyPatch(typeof(PlayerReferenceManager), "OnPlayerReferenceAdded")]
+        [HarmonyPostfix]
+        public static void OnPlayerReferenceAdded_Postfix(
+            PlayerReferenceManager __instance,
+            int index)
+        {
+            var playerRef = __instance.sync_PlayerReferences[index];
+            MelonLogger.Msg($"Player reference added: {playerRef}");
+
+            if (playerRef == null)
+                return;
+            if (playerRef.ConnectionID == 32767)
+            {
+                Debug.Log("Adding fake player reference for server (host) player...");
+                _fakePlayerReference = AddFakeServerPlayerReference();
+            }
+            else
+            {
+                Debug.Log("Not Host Player");
+            }
+
+            // You can inspect the current list here.
+            MelonLogger.Msg($"Total references: {__instance.sync_PlayerReferences.Count}");
+        }
+
         public static void BroadcastMessage(int clientId, string text)
         {
-            fakePlayerReference = AddFakeServerPlayerReference();
             var sm = InstanceFinder.ServerManager;
 
             if (sm == null)
             {
-                Debug.LogError("ServerManager is null. Run this on host/server.");
+                Debug.LogError("[Chat] Cannot send message: server manager is unavailable. Are you hosting?");
                 return;
             }
 
             var msg = new ChatMessage
             {
                 Username = "",
-                UserProductId = fakePlayerReference.ProductUserId.ToString(),
+                UserProductId = _fakePlayerReference.ProductUserId.ToString(),
                 Message = text,
                 MessageType = ChatMessageType.Chat,
                 SystemMessageType = (SystemMessageType)(-1)
@@ -114,7 +149,7 @@ namespace MultiplayerTools.Patches
 
             if (!sm.Clients.TryGetValue(clientId, out NetworkConnection conn))
             {
-                Debug.LogError($"No client found with id {clientId}");
+                Debug.LogError($"[Chat] Cannot send private message: client not found (clientId={clientId}).");
                 return;
             }
 
@@ -127,13 +162,13 @@ namespace MultiplayerTools.Patches
 
             if (manager == null || manager.sync_PlayerReferences == null)
             {
-                Debug.LogError("PlayerReferenceManager or sync_PlayerReferences is null.");
+                Debug.LogError("[Chat] Cannot create fake server player: player references are not ready.");
                 return null;
             }
 
             if (manager.sync_PlayerReferences.Count == 0)
             {
-                Debug.LogError("No PlayerReferences to clone.");
+                Debug.LogError("[Chat] Cannot create fake server player: no player references available to clone.");
                 return null;
             }
 
@@ -146,7 +181,7 @@ namespace MultiplayerTools.Patches
 
             if (!manager._communicationPoliciesByPlatformUserId.ContainsKey(fakePlatformUserId))
             {
-                fakePlayerReference = null;
+                _fakePlayerReference = null;
                 var srcPc = src.PlayerControl;
                 var cloneGo = Object.Instantiate(srcPc.gameObject);
                 cloneGo.name = "Fake Server PlayerControl";
@@ -158,7 +193,7 @@ namespace MultiplayerTools.Patches
                     fakeProductId,
                     fakePlatformUserId,
                     fakeConnectionId,
-                    "Server",
+                    "",
                     fakeVoiceId,
                     src.AuthPlatform,
                     fakePc
