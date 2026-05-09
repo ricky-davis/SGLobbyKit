@@ -4,12 +4,15 @@ using Il2CppFishNet;
 using Il2CppFishNet.Connection;
 using Il2Cpp_Scripts.Systems.Chat;
 using UnityEngine;
+using Object = UnityEngine.Object;
 
 namespace MultiplayerTools.Patches
 {
     [HarmonyPatch]
-    public static class ServerBangCommandPatch
+    public static class ChatSystem
     {
+        public static PlayerReference fakePlayerReference;
+
         private struct CommandStamp
         {
             public string Message;
@@ -83,6 +86,104 @@ namespace MultiplayerTools.Patches
             return false;
         }
 
+        public static void BroadcastMessage(int clientId, string text)
+        {
+            fakePlayerReference = AddFakeServerPlayerReference();
+            var sm = InstanceFinder.ServerManager;
+
+            if (sm == null)
+            {
+                Debug.LogError("ServerManager is null. Run this on host/server.");
+                return;
+            }
+
+            var msg = new ChatMessage
+            {
+                Username = "",
+                UserProductId = fakePlayerReference.ProductUserId.ToString(),
+                Message = text,
+                MessageType = ChatMessageType.Chat,
+                SystemMessageType = (SystemMessageType)(-1)
+            };
+
+            if (clientId < 0)
+            {
+                sm.Broadcast(msg, true);
+                return;
+            }
+
+            if (!sm.Clients.TryGetValue(clientId, out NetworkConnection conn))
+            {
+                Debug.LogError($"No client found with id {clientId}");
+                return;
+            }
+
+            sm.Broadcast(conn, msg, true);
+        }
+
+        public static PlayerReference AddFakeServerPlayerReference()
+        {
+            var manager = PlayerReferenceManager.Instance;
+
+            if (manager == null || manager.sync_PlayerReferences == null)
+            {
+                Debug.LogError("PlayerReferenceManager or sync_PlayerReferences is null.");
+                return null;
+            }
+
+            if (manager.sync_PlayerReferences.Count == 0)
+            {
+                Debug.LogError("No PlayerReferences to clone.");
+                return null;
+            }
+
+            var src = manager.sync_PlayerReferences[0];
+
+            string fakeProductId = "00000000000000000000000000000000";
+            string fakeVoiceId = "";
+            int fakeConnectionId = 32766;
+            long fakePlatformUserId = 01234567898765432L;
+
+            if (!manager._communicationPoliciesByPlatformUserId.ContainsKey(fakePlatformUserId))
+            {
+                fakePlayerReference = null;
+                var srcPc = src.PlayerControl;
+                var cloneGo = Object.Instantiate(srcPc.gameObject);
+                cloneGo.name = "Fake Server PlayerControl";
+                cloneGo.SetActive(false);
+
+                var fakePc = cloneGo.GetComponent<PlayerControl>();
+
+                manager.Server_AddPlayerReference(
+                    fakeProductId,
+                    fakePlatformUserId,
+                    fakeConnectionId,
+                    "Server",
+                    fakeVoiceId,
+                    src.AuthPlatform,
+                    fakePc
+                );
+            }
+
+            PlayerReference fake = null;
+
+            for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
+            {
+                var pr = manager.sync_PlayerReferences[i];
+
+                if (pr.ProductUserId == fakeProductId || pr.ConnectionID == fakeConnectionId)
+                {
+                    fake = pr;
+                    break;
+                }
+            }
+
+            if (!manager._communicationPoliciesByPlatformUserId.ContainsKey(fakePlatformUserId))
+                manager.WarmCommunicationPolicy(fake, true);
+
+            return fake;
+        }
+
         private static bool HandleCommand(string message, NetworkConnection connection, bool isHostLocal)
         {
             if (string.IsNullOrWhiteSpace(message))
@@ -102,7 +203,7 @@ namespace MultiplayerTools.Patches
             {
                 if (parts.Length < 2)
                 {
-                    MultiplayerTools.BroadcastMessage(pc.OwnerId, "<#F00>Usage: !tp <name>");
+                    BroadcastMessage(pc.OwnerId, "<#F00>Usage: !tp <name>");
                     return false;
                 }
 
@@ -111,7 +212,7 @@ namespace MultiplayerTools.Patches
 
                 if (otherPlayer == null)
                 {
-                    MultiplayerTools.BroadcastMessage(pc.OwnerId, $"<#FA0>Player not found: {targetName}");
+                    BroadcastMessage(pc.OwnerId, $"<#FA0>Player not found: {targetName}");
                     return false;
                 }
 
@@ -119,7 +220,7 @@ namespace MultiplayerTools.Patches
                 Quaternion targetRot = otherPlayer.PlayerControl.transform.rotation;
 
                 pc.RpcWriter___RpcResetPosition___3848837105(targetPos, targetRot);
-                MultiplayerTools.BroadcastMessage(pc.OwnerId, $"<#FF0>Tp'd to {otherPlayer.Username}");
+                BroadcastMessage(pc.OwnerId, $"<#FF0>Tp'd to {otherPlayer.Username}");
                 return false;
             }
 
