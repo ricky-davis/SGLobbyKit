@@ -612,6 +612,7 @@
     <Compile Include="MultiplayerToolsCore.cs" />
     <Compile Include="MaxPlayersPatch.cs" />
     <Compile Include="ChatCommandSystem.cs" />
+    <Compile Include="Utils.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	
