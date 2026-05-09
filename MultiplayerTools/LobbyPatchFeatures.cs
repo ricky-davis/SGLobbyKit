@@ -17,21 +17,6 @@ namespace MultiplayerTools.Patches
         public static MySliderUI MaxPlayerSlider;
         public static Il2CppTMPro.TMP_InputField CustomLobbyNameInput;
 
-        public static void SetMaxPlayers()
-        {
-            if (MaxPlayerSlider == null)
-                return;
-
-            Slider s = MaxPlayerSlider.slider;
-            s.minValue = 1f;
-            s.maxValue = 64f;
-            s.wholeNumbers = true;
-
-            s.value = Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64);
-
-            MaxPlayerSlider.UpdateSliderValueDisplay();
-        }
-
         public static string GetInputLobbyName()
         {
             if (CustomLobbyNameInput != null)
@@ -102,7 +87,7 @@ namespace MultiplayerTools.Patches
             // Setup the Max Players slider
             if (MaxPlayerSlider == null){
                 MaxPlayerSlider = instance.maxPlayersSlider;
-                SetMaxPlayers();
+                MaxPlayerSlider.slider.maxValue = 64f;
                 MaxPlayerSlider.slider.value = Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64);
                 MaxPlayerSlider.UpdateSliderValueDisplay();
                 MaxPlayerSlider.slider.onValueChanged.AddListener((UnityEngine.Events.UnityAction<float>)((value) =>
@@ -114,7 +99,14 @@ namespace MultiplayerTools.Patches
             Toggle publicLobbyToggle = instance.publicLobbyToggle;
             if (publicLobbyToggle != null)
             {
-                publicLobbyToggle.isOn = MultiplayerToolsCore.IsPublicLobby;
+                if (MultiplayerToolsCore.IsPublicLobby)
+                {
+                    publicLobbyToggle.isOn = true;
+                }
+                else
+                {
+                    publicLobbyToggle.group.m_Toggles[0].isOn = true;
+                }
                 publicLobbyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
                 {
                     MultiplayerToolsCore.SetIsPublicLobby(isOn);
@@ -189,9 +181,9 @@ namespace MultiplayerTools.Patches
             lobbyProperties.MaxNumLobbyMembers = (uint)LobbyPatchFeatures.MaxPlayerSlider.slider.value;
         }
 
-        [HarmonyPatch(typeof(UICreateLobby), "Awake")]
+        [HarmonyPatch(typeof(UICreateLobby), "ShowPanel")]
         [HarmonyPostfix]
-        private static void UICreateLobby_Awake_Postfix(UICreateLobby __instance)
+        private static void UICreateLobby_ShowPanel_Postfix(UICreateLobby __instance)
         {
             LobbyPatchFeatures.SetupCustomLobbyNameInput(__instance);
         }

@@ -25,6 +25,37 @@ namespace MultiplayerTools.Patches
 
         private static readonly Dictionary<int, CommandStamp> _lastCommandBySource = new();
 
+        private delegate bool ChatCommandHandler(PlayerControl playerControl, string args);
+
+        private sealed class ChatCommandDefinition
+        {
+            public ChatCommandHandler Handler;
+            public string Usage;
+            public string Description;
+        }
+
+        private static readonly Dictionary<string, ChatCommandDefinition> _commands = new(StringComparer.OrdinalIgnoreCase)
+        {
+            {
+                "!help",
+                new ChatCommandDefinition
+                {
+                    Handler = HandleHelpCommand,
+                    Usage = "!help [command]",
+                    Description = "Shows available commands or details for one command."
+                }
+            },
+            {
+                "!tp",
+                new ChatCommandDefinition
+                {
+                    Handler = HandleTpCommand,
+                    Usage = "!tp <name>",
+                    Description = "Teleport to a player by name."
+                }
+            }
+        };
+
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
         [HarmonyPrefix]
         private static bool ChatManager_ProcessChatInput_Prefix(ChatManager __instance)
@@ -56,10 +87,12 @@ namespace MultiplayerTools.Patches
 
             _lastCommandBySource[sourceId] = new CommandStamp { Message = cleaned, Frame = frame };
 
+            bool shouldPassThrough = HandleCommand(cleaned, null, isHostLocal: true);
+            if (shouldPassThrough)
+                return true;
+
             chatBox.inputFieldValue = "";
             chatBox.ClearInputBox();
-
-            HandleCommand(cleaned, null, isHostLocal: true);
             return false;
         }
 
@@ -92,8 +125,7 @@ namespace MultiplayerTools.Patches
 
             _lastCommandBySource[connId] = new CommandStamp { Message = msg, Frame = frame };
 
-            HandleCommand(msg, networkConnection, isHostLocal: false);
-            return false;
+            return HandleCommand(msg, networkConnection, isHostLocal: false);
         }
 
 
@@ -225,41 +257,72 @@ namespace MultiplayerTools.Patches
                 return true;
 
             message = message.Trim();
-            if (!message.StartsWith("!", StringComparison.Ordinal))
-                return true;
 
             PlayerControl pc = isHostLocal ? Utils.FindHostPlayer() : Utils.FindPlayerFromConnection(connection);
             if (pc == null)
-                return false;
+                return true;
 
             string[] parts = message.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            if (parts.Length == 0)
+                return true;
 
-            if (parts.Length > 0 && parts[0].Equals("!tp", StringComparison.OrdinalIgnoreCase))
+            string command = parts[0];
+            string args = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+
+            if (_commands.TryGetValue(command, out ChatCommandDefinition commandDef))
+                return commandDef.Handler(pc, args);
+
+            return true;
+        }
+
+        private static bool HandleHelpCommand(PlayerControl pc, string args)
+        {
+            if (!string.IsNullOrWhiteSpace(args))
             {
-                if (parts.Length < 2)
+                string requested = args.Trim();
+                if (!requested.StartsWith("!", StringComparison.Ordinal))
+                    requested = "!" + requested;
+
+                if (_commands.TryGetValue(requested, out ChatCommandDefinition commandDef))
                 {
-                    BroadcastMessage(pc.OwnerId, "<#F00>Usage: !tp <name>");
+                    BroadcastMessage(pc.OwnerId, $"<#7FF>{commandDef.Usage} - {commandDef.Description}");
                     return false;
                 }
 
-                string targetName = parts[1].Trim();
-                PlayerReference otherPlayer = Utils.FindPlayerByName(targetName);
-
-                if (otherPlayer == null)
-                {
-                    BroadcastMessage(pc.OwnerId, $"<#FA0>Player not found: {targetName}");
-                    return false;
-                }
-
-                Vector3 targetPos = otherPlayer.PlayerControl.transform.position;
-                Quaternion targetRot = otherPlayer.PlayerControl.transform.rotation;
-
-                pc.RpcWriter___RpcResetPosition___3848837105(targetPos, targetRot);
-                BroadcastMessage(pc.OwnerId, $"<#FF0>Tp'd to {otherPlayer.Username}");
+                BroadcastMessage(pc.OwnerId, $"<#FA0>Unknown command: {requested}");
                 return false;
             }
 
-            return true;
+            BroadcastMessage(pc.OwnerId, "<#7FF>Available commands:");
+            foreach (var pair in _commands)
+                BroadcastMessage(pc.OwnerId, $"<#7FF>{pair.Value.Usage}");
+
+            return false;
+        }
+
+        private static bool HandleTpCommand(PlayerControl pc, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                BroadcastMessage(pc.OwnerId, "<#F00>Usage: !tp <name>");
+                return false;
+            }
+
+            string targetName = args.Trim();
+            PlayerReference otherPlayer = Utils.FindPlayerByName(targetName);
+
+            if (otherPlayer == null)
+            {
+                BroadcastMessage(pc.OwnerId, $"<#FA0>Player not found: {targetName}");
+                return false;
+            }
+
+            Vector3 targetPos = otherPlayer.PlayerControl.transform.position;
+            Quaternion targetRot = otherPlayer.PlayerControl.transform.rotation;
+
+            pc.RpcWriter___RpcResetPosition___3848837105(targetPos, targetRot);
+            BroadcastMessage(pc.OwnerId, $"<#FF0>Tp'd to {otherPlayer.Username}");
+            return false;
         }
     }
 }
