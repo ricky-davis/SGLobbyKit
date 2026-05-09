@@ -51,12 +51,8 @@ namespace MultiplayerTools
             return bestMatch;
         }
 
-        public static PlayerControl FindPlayerFromConnection(NetworkConnection connection)
+        public static PlayerControl FindPlayerFromConnectionId(int connectionId)
         {
-            if (connection == null)
-                return null;
-
-            int clientId = connection.ClientId;
             var manager = PlayerReferenceManager.Instance;
             if (manager == null || manager.sync_PlayerReferences == null)
                 return null;
@@ -64,7 +60,7 @@ namespace MultiplayerTools
             for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
             {
                 PlayerReference playerRef = manager.sync_PlayerReferences[i];
-                if (playerRef.ConnectionID == clientId)
+                if (playerRef.ConnectionID == connectionId)
                     return playerRef.PlayerControl;
             }
 

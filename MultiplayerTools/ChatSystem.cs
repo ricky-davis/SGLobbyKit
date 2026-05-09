@@ -9,6 +9,7 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 using MelonLoader;
 using Il2CppFishNet.Object.Synchronizing;
+using static Il2CppRewired.Demos.CustomPlatform.MyPlatformControllerExtension;
 
 namespace MultiplayerTools.Patches
 {
@@ -64,8 +65,6 @@ namespace MultiplayerTools.Patches
                 return true;
 
             var chatBox = __instance.chatBox;
-            if (chatBox == null)
-                return true;
 
             string raw = chatBox.inputFieldValue;
             if (string.IsNullOrWhiteSpace(raw))
@@ -75,19 +74,7 @@ namespace MultiplayerTools.Patches
             if (string.IsNullOrWhiteSpace(cleaned) || !cleaned.StartsWith("!"))
                 return true;
 
-            int sourceId = -1;
-            int frame = Time.frameCount;
-
-            if (_lastCommandBySource.TryGetValue(sourceId, out CommandStamp last) &&
-                last.Frame == frame &&
-                last.Message == cleaned)
-            {
-                return false;
-            }
-
-            _lastCommandBySource[sourceId] = new CommandStamp { Message = cleaned, Frame = frame };
-
-            bool shouldPassThrough = HandleCommand(cleaned, null, isHostLocal: true);
+            bool shouldPassThrough = HandleCommand(cleaned, -1, isHostLocal: true);
             if (shouldPassThrough)
                 return true;
 
@@ -103,29 +90,11 @@ namespace MultiplayerTools.Patches
             if (!MultiplayerToolsCore.EnableGuestBangCommands)
                 return true;
 
-            if (!InstanceFinder.IsServerStarted)
-                return true;
-
-            if (networkConnection == null || chatMessage == null)
-                return true;
-
             string msg = chatMessage.Message;
             if (string.IsNullOrWhiteSpace(msg) || !msg.StartsWith("!"))
                 return true;
 
-            int connId = networkConnection.ClientId;
-            int frame = Time.frameCount;
-
-            if (_lastCommandBySource.TryGetValue(connId, out CommandStamp last) &&
-                last.Frame == frame &&
-                last.Message == msg)
-            {
-                return false;
-            }
-
-            _lastCommandBySource[connId] = new CommandStamp { Message = msg, Frame = frame };
-
-            return HandleCommand(msg, networkConnection, isHostLocal: false);
+            return HandleCommand(msg, networkConnection.ClientId, isHostLocal: false);
         }
 
 
@@ -251,14 +220,22 @@ namespace MultiplayerTools.Patches
             return fake;
         }
 
-        private static bool HandleCommand(string message, NetworkConnection connection, bool isHostLocal)
+        private static bool HandleCommand(string message, int connectionId, bool isHostLocal)
         {
+            int frame = Time.frameCount;
+            if (_lastCommandBySource.TryGetValue(connectionId, out CommandStamp last) &&
+                last.Frame == frame &&
+                last.Message == message)
+            {
+                return false;
+            }
+
             if (string.IsNullOrWhiteSpace(message))
                 return true;
 
             message = message.Trim();
 
-            PlayerControl pc = isHostLocal ? Utils.FindHostPlayer() : Utils.FindPlayerFromConnection(connection);
+            PlayerControl pc = isHostLocal ? Utils.FindHostPlayer() : Utils.FindPlayerFromConnectionId(connectionId);
             if (pc == null)
                 return true;
 
@@ -270,7 +247,10 @@ namespace MultiplayerTools.Patches
             string args = parts.Length > 1 ? parts[1].Trim() : string.Empty;
 
             if (_commands.TryGetValue(command, out ChatCommandDefinition commandDef))
+            {
+                _lastCommandBySource[connectionId] = new CommandStamp { Message = message, Frame = frame };
                 return commandDef.Handler(pc, args);
+            }
 
             return true;
         }
