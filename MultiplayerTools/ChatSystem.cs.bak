@@ -195,29 +195,12 @@ namespace MultiplayerTools.Patches
                 Debug.LogError("[Chat] Cannot send message: server manager is unavailable. Are you hosting?");
                 return;
             }
+            PlayerReference pr = Utils.FindPlayerFromConnectionId(showAboveUser);
 
-            PlayerReference pr = null;
-            if (showAboveUser != 0)
-                pr = Utils.FindPlayerFromConnectionId(showAboveUser);
-
-            string userProductId;
-            if (showAboveUser != 0 && pr != null)
-            {
-                userProductId = pr.ProductUserId;
-            }
-            else
-            {
-                // Server/system messages must still point at a replicated PlayerReference.
-                userProductId = ResolveServerMessageProductId();
-            }
-
-            // Always send as Chat message type so clients render the line in chat consistently.
-            // We rely on using a replicated ProductUserId that is not attachable to a PlayerControl
-            // (the fake reference is created without a PlayerControl) to avoid overhead bubbles.
             var msg = new ChatMessage
             {
                 Username = username,
-                UserProductId = userProductId,
+                UserProductId = showAboveUser == 0 ? _fakePlayerReference.ProductUserId.ToString() : pr.ProductUserId,
                 Message = text,
                 MessageType = ChatMessageType.Chat,
                 SystemMessageType = (SystemMessageType)(-1)
@@ -236,22 +219,6 @@ namespace MultiplayerTools.Patches
             }
             Debug.Log($"Broadcasting message: {msg} to {conn}");
             sm.Broadcast(conn, msg, true);
-        }
-
-        private static string ResolveServerMessageProductId()
-        {
-            if (_fakePlayerReference == null)
-                _fakePlayerReference = AddFakeServerPlayerReference();
-
-            if (_fakePlayerReference != null && !string.IsNullOrWhiteSpace(_fakePlayerReference.ProductUserId))
-                return _fakePlayerReference.ProductUserId;
-
-            PlayerReference hostRef = Utils.FindPlayerFromConnectionId(32767);
-            if (hostRef != null && !string.IsNullOrWhiteSpace(hostRef.ProductUserId))
-                return hostRef.ProductUserId;
-
-            // Last-resort fallback to avoid empty IDs if references are not initialized yet.
-            return "SERVER_MESSAGE";
         }
 
         public static PlayerReference AddFakeServerPlayerReference()
@@ -402,7 +369,6 @@ namespace MultiplayerTools.Patches
                     behaviour.enabled = false;
             }
         }
-
         private static bool HandleCommand(string message, int connectionId, bool isHostLocal)
         {
 
