@@ -615,6 +615,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
+    <Compile Include="FakeServerPlayer.cs" />
     <Compile Include="MultiplayerToolsCore.cs" />
     <Compile Include="LobbyPatchFeatures.cs" />
     <Compile Include="ChatSystem.cs" />

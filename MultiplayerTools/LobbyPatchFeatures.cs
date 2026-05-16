@@ -7,6 +7,8 @@ using UnityEngine;
 using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Il2CppTMPro;
+using System.Collections;
+using Il2Cpp_Scripts.UI.Popups;
 
 namespace MultiplayerTools.Patches
 {
@@ -15,8 +17,9 @@ namespace MultiplayerTools.Patches
     public static class LobbyPatchFeatures
     {
         public static MySliderUI MaxPlayerSlider;
-        public static Il2CppTMPro.TMP_InputField CustomLobbyNameInput;
+        public static TMP_InputField CustomLobbyNameInput;
         public static Toggle EnableGuestBangCommandsToggle;
+        public static bool TogglesInitialized = false;
 
         public static string GetInputLobbyName()
         {
@@ -96,78 +99,80 @@ namespace MultiplayerTools.Patches
                     MultiplayerToolsCore.SetServerCapacity(Mathf.RoundToInt(value));
                 }));
             }
-
-            Toggle publicLobbyToggle = instance.publicLobbyToggle;
-            (MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : publicLobbyToggle.group.m_Toggles[0]).isOn = true;
-            publicLobbyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+            if (TogglesInitialized == false)
             {
-                MultiplayerToolsCore.SetIsPublicLobby(isOn);
-            }));
-
-
-            Toggle passwordProtectedToggle = instance.passwordProtectedToggle;
-            passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
-            passwordProtectedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-            {
-                MultiplayerToolsCore.SetIsPasswordProtected(isOn);
-            }));
-
-
-            TMP_InputField passwordInputField = instance.passwordInputField;
-            passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
-            passwordInputField.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
-            {
-                MultiplayerToolsCore.SetLobbyPassword(text);
-            }));
-
-
-            Toggle peacefulModeToggle = instance.peacefulModeToggle;
-            peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
-            peacefulModeToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-            {
-                MultiplayerToolsCore.SetIsPeacefulMode(isOn);
-            }));
-            
-
-            Toggle textChatOnlyToggle = instance.textChatOnlyToggle;
-            textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
-            textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-            {
-                MultiplayerToolsCore.SetIsTextChatOnly(isOn);
-            }));
-
-
-            if (EnableGuestBangCommandsToggle == null)
-            {
-                var cloneGO = Object.Instantiate(textChatOnlyToggle.gameObject, textChatOnlyToggle.transform.parent);
-                cloneGO.name = "EnableGuestBangCommandsToggle";
-                cloneGO.transform.SetSiblingIndex(textChatOnlyToggle.transform.GetSiblingIndex() + 1);
-
-                var cloneToggle = cloneGO.GetComponent<Toggle>();
-                if (cloneToggle != null)
+                Toggle publicLobbyToggle = instance.publicLobbyToggle;
+                publicLobbyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
                 {
-                    cloneToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
-                    cloneToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-                    {
-                        MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
-                    }));
+                    MultiplayerToolsCore.SetIsPublicLobby(isOn);
+                }));
+                (MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : publicLobbyToggle.group.m_Toggles[0]).isOn = true;
 
-                    var label = cloneGO.GetComponentInChildren<TMP_Text>(true);
-                    if (label != null)
+
+                Toggle passwordProtectedToggle = instance.passwordProtectedToggle;
+                passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
+                passwordProtectedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                {
+                    MultiplayerToolsCore.SetIsPasswordProtected(isOn);
+                }));
+
+
+                TMP_InputField passwordInputField = instance.passwordInputField;
+                passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
+                passwordInputField.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
+                {
+                    MultiplayerToolsCore.SetLobbyPassword(text);
+                }));
+
+
+                Toggle peacefulModeToggle = instance.peacefulModeToggle;
+                peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
+                peacefulModeToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                {
+                    MultiplayerToolsCore.SetIsPeacefulMode(isOn);
+                }));
+
+
+                Toggle textChatOnlyToggle = instance.textChatOnlyToggle;
+                textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
+                textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                {
+                    MultiplayerToolsCore.SetIsTextChatOnly(isOn);
+                }));
+
+
+                if (EnableGuestBangCommandsToggle == null)
+                {
+                    var cloneGO = Object.Instantiate(textChatOnlyToggle.gameObject, textChatOnlyToggle.transform.parent);
+                    cloneGO.name = "EnableGuestBangCommandsToggle";
+                    cloneGO.transform.SetSiblingIndex(textChatOnlyToggle.transform.GetSiblingIndex() + 1);
+
+                    var cloneToggle = cloneGO.GetComponent<Toggle>();
+                    if (cloneToggle != null)
                     {
-                        var loc = label.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                        if (loc != null)
-                            Object.Destroy(loc);
-                        label.text = "Enable Guest Bang Commands";
+                        cloneToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                        cloneToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                        {
+                            MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
+                        }));
+
+                        var label = cloneGO.GetComponentInChildren<TMP_Text>(true);
+                        if (label != null)
+                        {
+                            var loc = label.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
+                            if (loc != null)
+                                Object.Destroy(loc);
+                            label.text = "Enable Guest Bang Commands";
+                        }
+
+                        cloneGO.SetActive(true);
+                        EnableGuestBangCommandsToggle = cloneToggle;
                     }
-
-                    cloneGO.SetActive(true);
-                    EnableGuestBangCommandsToggle = cloneToggle;
                 }
-            }
-            else
-            {
-                EnableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                else
+                {
+                    EnableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                }
             }
         }
 
@@ -202,7 +207,17 @@ namespace MultiplayerTools.Patches
         [HarmonyPostfix]
         private static void UICreateLobby_ShowPanel_Postfix(UICreateLobby __instance)
         {
-            LobbyPatchFeatures.SetupCustomLobbyNameInput(__instance);
+            SetupCustomLobbyNameInput(__instance);
         }
+
+        [HarmonyPatch(typeof(UIMainMenu), "OnHostClicked")]
+        [HarmonyPrefix]
+        private static bool UIMainMenu_OnHostClicked_Prefix(UIMainMenu __instance)
+        {
+            UiReferenceController uiInstance = UiReferenceController.Instance;
+            uiInstance.OpenMenu(uiInstance.createLobby);
+            return false;
+        }
+
     }
 }

@@ -1,6 +1,12 @@
 using Il2Cpp;
 using Il2CppFishNet.Connection;
+using UnityEngine;
 using Object = UnityEngine.Object;
+using System.Text.RegularExpressions;
+using Il2CppDissonance.Integrations.FishNet;
+using DissonancePlayer = Il2CppDissonance.Integrations.FishNet.DissonanceFishNetPlayer;
+using NetworkObject = Il2CppFishNet.Object.NetworkObject;
+using UnityObject = UnityEngine.Object;
 
 namespace MultiplayerTools
 {
@@ -8,17 +14,37 @@ namespace MultiplayerTools
     {
         public static PlayerControl FindHostPlayer()
         {
-            var players = Object.FindObjectsOfType<PlayerControl>();
+            var players = UnityEngine.Object.FindObjectsOfType<PlayerControl>();
+
             foreach (var pc in players)
             {
-                if (pc != null && pc.IsOwner)
+                if (pc == null)
+                    continue;
+
+                if (FakeServerPlayer.IsFakeServerPlayerControl(pc))
+                    continue;
+
+                try
+                {
+                    if (pc.IsOwner)
+                        return pc;
+                }
+                catch
+                {
+                    continue;
+                }
+            }
+
+            foreach (var pc in players)
+            {
+                if (pc != null && !FakeServerPlayer.IsFakeServerPlayerControl(pc))
                     return pc;
             }
 
-            return Object.FindObjectOfType<PlayerControl>();
+            return null;
         }
 
-        public static PlayerReference FindPlayerByName(string name, float similarityThreshold = 0.1f)
+        public static PlayerReference FindPlayerByName(string name, float similarityThreshold = 0.1f, bool sanitized = false)
         {
             if (string.IsNullOrWhiteSpace(name))
                 return null;
@@ -33,7 +59,7 @@ namespace MultiplayerTools
             for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
             {
                 PlayerReference playerRef = manager.sync_PlayerReferences[i];
-                string username = playerRef.Username;
+                string username = sanitized ? SanitizeUsername(playerRef.Username) : playerRef.Username;
                 if (string.IsNullOrWhiteSpace(username))
                     continue;
 
@@ -51,7 +77,7 @@ namespace MultiplayerTools
             return bestMatch;
         }
 
-        public static PlayerControl FindPlayerFromConnectionId(int connectionId)
+        public static PlayerReference FindPlayerFromConnectionId(int connectionId)
         {
             var manager = PlayerReferenceManager.Instance;
             if (manager == null || manager.sync_PlayerReferences == null)
@@ -61,7 +87,7 @@ namespace MultiplayerTools
             {
                 PlayerReference playerRef = manager.sync_PlayerReferences[i];
                 if (playerRef.ConnectionID == connectionId)
-                    return playerRef.PlayerControl;
+                    return playerRef;
             }
 
             return null;
@@ -98,6 +124,58 @@ namespace MultiplayerTools
             }
 
             return d[n, m];
+        }
+        public static GameObject FindChildByName(Transform parent, string name)
+        {
+            if (parent == null)
+                return null;
+
+            for (int i = 0; i < parent.childCount; i++)
+            {
+                Transform child = parent.GetChild(i);
+
+                if (child.name == name)
+                    return child.gameObject;
+
+                GameObject found = FindChildByName(child, name);
+                if (found != null)
+                    return found;
+            }
+
+            return null;
+        }
+        public static DissonancePlayer GetDissonancePlayer(PlayerControl pc)
+        {
+            if (pc == null)
+                return null;
+
+            NetworkObject pcNo = pc.GetComponent<NetworkObject>();
+            if (pcNo == null)
+                return null;
+
+            int ownerId = pcNo.OwnerId;
+
+            foreach (DissonancePlayer d in UnityObject.FindObjectsOfType<DissonancePlayer>())
+            {
+                NetworkObject dNo = d.GetComponent<NetworkObject>();
+
+                if (dNo != null && dNo.OwnerId == ownerId)
+                    return d;
+            }
+
+            return null;
+        }
+
+        private static readonly Regex HexColorTag =
+            new Regex(@"<#(?:[0-9a-fA-F]{3}|[0-9a-fA-F]{6}|[0-9a-fA-F]{8})>",
+                RegexOptions.Compiled);
+
+        public static string SanitizeUsername(string name)
+        {
+            if (string.IsNullOrEmpty(name))
+                return string.Empty;
+
+            return HexColorTag.Replace(name, "");
         }
     }
 }

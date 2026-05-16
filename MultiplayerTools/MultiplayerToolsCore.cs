@@ -16,7 +16,7 @@ namespace MultiplayerTools
     {
         public static MultiplayerToolsCore Instance;
         private PlayerReference localPlayer;
-        private PlayerReference[] players = (PlayerReference[])(object)new PlayerReference[0];
+        private readonly List<PlayerReference> players = new List<PlayerReference>();
         public static bool isHost = false;
 
         private static MelonPreferences_Category _preferences;
@@ -75,15 +75,25 @@ namespace MultiplayerTools
         {
             private static void Postfix(PlayerReferenceManager __instance, int index)
             {
-                PlayerReference val = __instance.GetPlayerReferences()[index];
+                var refs = __instance.GetPlayerReferences();
+
+                if (refs == null || index < 0 || index >= refs.Count)
+                    return;
+
+                var val = refs[index];
+
+                if (val == null || FakeServerPlayer.IsFakeServerReference(val))
+                    return;
+
                 if (val.IsLocalPlayerInstance())
                 {
                     Instance.localPlayer = val;
-                    if (Utils.FindHostPlayer() == val.PlayerControl)
-                    {
+
+                    var hostPc = Utils.FindHostPlayer();
+                    if (hostPc != null && val.PlayerControl != null && hostPc == val.PlayerControl)
                         isHost = true;
-                    }
                 }
+
                 Instance.PlayerJoinedGame(val);
             }
         }
@@ -98,24 +108,30 @@ namespace MultiplayerTools
         }
         public void PlayerJoinedGame(PlayerReference p)
         {
-            players.SetValue(p, players.Length);
+            if (p == null || FakeServerPlayer.IsFakeServerReference(p))
+                return;
+
+            if (!players.Contains(p))
+                players.Add(p);
+
             if (p.IsLocalPlayerInstance())
-            {
                 localPlayer = p;
-            }
         }
 
         public void PlayerLeftGame(int index)
         {
-            if (index >= 0 && index < players.Length)
+            if (index < 0 || index >= players.Count)
+                return;
+
+            var p = players[index];
+
+            if (p != null && p.IsLocalPlayerInstance())
             {
-                if (players[index].IsLocalPlayerInstance())
-                {
-                    localPlayer = null;
-                    isHost = false;
-                }
-                players[index] = null;
+                localPlayer = null;
+                isHost = false;
             }
+
+            players.RemoveAt(index);
         }
 
         public PlayerReference GetLocalPlayer()
@@ -201,16 +217,16 @@ namespace MultiplayerTools
                 _playerReferenceManager = PlayerReferenceManager.Instance;
                 yield return null;
             }
-            List<StatueSetup> statueSetups = null;
-            while (statueSetups == null || statueSetups.Count == 0)
-            {
-                statueSetups = ((IEnumerable<StatueSetup>)Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0)).ToList();
-                Debug.Log("[Core] Waiting for scene references to load...");
-                Debug.Log("Count: " + statueSetups.Count);
-                yield return null;
-            }
+            // List<StatueSetup> statueSetups = null;
+            // while (statueSetups == null || statueSetups.Count == 0)
+            // {
+            //     statueSetups = ((IEnumerable<StatueSetup>)Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0)).ToList();
+            //     Debug.Log("[Core] Waiting for scene references to load...");
+            //     Debug.Log("Count: " + statueSetups.Count);
+            //     yield return null;
+            // }
 
-            Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0).ToList();
+            // Object.FindObjectsByType<StatueSetup>((FindObjectsSortMode)0).ToList();
             ReferencesLoaded = true;
             Debug.Log("[Core] Scene references loaded successfully.");
         }
