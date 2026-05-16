@@ -83,15 +83,6 @@ namespace MultiplayerTools.Patches
                     Usage = "!fake",
                     Description = "Spawn the fake player."
                 }
-            },
-            {
-                "!test",
-                new ChatCommandDefinition
-                {
-                    Handler = HandleTestCommand,
-                    Usage = "!test",
-                    Description = "Log the stats."
-                }
             }
         };
 
@@ -256,8 +247,46 @@ namespace MultiplayerTools.Patches
             if (!manager._communicationPoliciesByPlatformUserId.ContainsKey(fakePlatformUserId))
             {
                 _fakePlayerReference = null;
+
                 var srcPc = src.PlayerControl;
-                var cloneGo = UnityEngine.Object.Instantiate(srcPc.gameObject);
+                var srcGo = srcPc.gameObject;
+                var wasActive = srcGo.activeSelf;
+
+                srcGo.SetActive(false);
+                var cloneGo = UnityEngine.Object.Instantiate(srcGo);
+                srcGo.SetActive(wasActive);
+
+                // Reconfigure NetworkObject so clone syncs to clients with unique identity.
+                var netObj = cloneGo.GetComponent<Il2CppFishNet.Object.NetworkObject>();
+                if (netObj != null)
+                {
+                    // ObjectId is Int32. Use a high value to avoid conflicts with normal spawned objects.
+                    int uniqueObjectId = 32766; // High value to avoid normal spawn conflicts
+                    AccessTools.Property(typeof(Il2CppFishNet.Object.NetworkObject), "ObjectId")
+                        ?.SetValue(netObj, uniqueObjectId);
+
+                    // Ensure it's marked as networked via the property setter (not just the field).
+                    AccessTools.Property(typeof(Il2CppFishNet.Object.NetworkObject), "IsNetworked")
+                        ?.SetValue(netObj, true);
+
+                    // Clear scene ID (it's UInt64, not int). 0 = dynamically spawned.
+                    AccessTools.Property(typeof(Il2CppFishNet.Object.NetworkObject), "SceneId")
+                        ?.SetValue(netObj, (ulong)0);
+
+                    // Make sure it's recognized by the network manager.
+                    netObj.enabled = true;
+
+                    // Invoke start callbacks to initialize the NetworkObject for server/client roles.
+                    var invokeStartMethod = AccessTools.Method(typeof(Il2CppFishNet.Object.NetworkObject), "InvokeStartCallbacks", new[] { typeof(bool), typeof(bool) });
+                    if (invokeStartMethod != null)
+                    {
+                        invokeStartMethod.Invoke(netObj, new object[] { true, true }); // asServer=true, invokeSyncTypeCallbacks=true
+                    }
+                }
+
+                cloneGo.name = "Fake Server PlayerControl";
+                cloneGo.transform.position = new Vector3(0f, -9999f, 0f);
+
                 DisableIfExists<PlayerMovement>(cloneGo);
                 DisableIfExists<PlayerSledController>(cloneGo);
                 DisableIfExists<PlayerCameraControl>(cloneGo);
@@ -268,30 +297,16 @@ namespace MultiplayerTools.Patches
                 DisableIfExists<HostControls>(cloneGo);
                 DisableIfExists<Il2CppDissonance.Integrations.FishNet.DissonanceFishNetPlayer>(cloneGo);
 
-                cloneGo.name = "Fake Server PlayerControl";
-                cloneGo.transform.position = new Vector3(0f, -9999f, 0f);
-
-                // Disable physics on the clone.
+                // Keep colliders and rigidbodies active for ragdoll physics to work.
+                // Only reset physics state, don't disable components.
                 foreach (var rb in cloneGo.GetComponentsInChildren<Rigidbody>(true))
                 {
-                    rb.isKinematic = true;
-                    rb.detectCollisions = false;
                     rb.linearVelocity = Vector3.zero;
                     rb.angularVelocity = Vector3.zero;
+                    rb.detectCollisions = true;
+                    // Keep isKinematic=false so ragdoll physics works
                 }
 
-                foreach (var col in cloneGo.GetComponentsInChildren<Collider>(true))
-                {
-                    col.enabled = false;
-                }
-
-                // Disable ragdoll controller on the clone.
-                foreach (var ragdoll in cloneGo.GetComponentsInChildren<PlayerRagdollRigidbodyController>(true))
-                {
-                    ragdoll.enabled = false;
-                }
-
-                // Disable visuals/nameplate/audio sources if they exist on player clone.
                 foreach (var renderer in cloneGo.GetComponentsInChildren<Renderer>(true))
                     renderer.enabled = false;
 
@@ -301,10 +316,17 @@ namespace MultiplayerTools.Patches
                 foreach (var audio in cloneGo.GetComponentsInChildren<AudioSource>(true))
                     audio.enabled = false;
 
-                cloneGo.SetActive(false);
 
                 var fakePc = cloneGo.GetComponent<PlayerControl>();
-
+                if (srcPc.characterModels != null && srcPc.characterModels.Count > 0)
+                {
+                    fakePc.characterModels.Clear();
+                    foreach (var kvp in srcPc.characterModels)
+                    {
+                        fakePc.characterModels[kvp.Key] = kvp.Value;
+                    }
+                }
+                cloneGo.SetActive(false);
 
                 manager.Server_AddPlayerReference(
                     fakeProductId,
@@ -445,237 +467,6 @@ namespace MultiplayerTools.Patches
 
             BroadcastMessage(pc.OwnerId, $"<#FF0>Spawned fake player.");
             return false;
-        }
-        private static bool HandleTestCommand(PlayerControl pc, string args)
-        {
-            if (pc == null)
-            {
-                Debug.LogError("[Chat] Cannot export PlayerControl: player control is null.");
-                return false;
-            }
-
-            GameObject rootObject = pc.transform.parent != null ? pc.transform.parent.gameObject : pc.gameObject;
-            string exportPath = ExportPlayerControlHierarchy(rootObject);
-
-            BroadcastMessage(pc.OwnerId, $"<#FF0>Exported {rootObject.name} to {Path.GetFileName(exportPath)}");
-            return false;
-        }
-
-        private static string ExportPlayerControlHierarchy(GameObject rootObject)
-        {
-            string exportDirectory = Path.Combine(Application.persistentDataPath, "PlayerControlExports");
-            Directory.CreateDirectory(exportDirectory);
-
-            string fileName = $"PC_{DateTime.Now:yyyyMMdd_HHmmss}.txt";
-            string exportPath = Path.Combine(exportDirectory, fileName);
-
-            var builder = new StringBuilder(64 * 1024);
-            var visited = new HashSet<object>(ReferenceEqualityComparer.Instance);
-
-            builder.AppendLine($"Export time: {DateTime.Now:O}");
-            builder.AppendLine($"Root object: {GetGameObjectPath(rootObject)}");
-            builder.AppendLine();
-
-            DumpGameObject(rootObject, builder, 0, visited);
-
-            File.WriteAllText(exportPath, builder.ToString());
-            Debug.Log($"[Chat] Exported PlayerControl hierarchy to {exportPath}");
-            return exportPath;
-        }
-
-        private static void DumpGameObject(GameObject gameObject, StringBuilder builder, int indentLevel, HashSet<object> visited)
-        {
-            if (gameObject == null)
-                return;
-
-            string indent = GetIndent(indentLevel);
-            builder.AppendLine($"{indent}GameObject: {gameObject.name}");
-            builder.AppendLine($"{indent}  Path: {GetGameObjectPath(gameObject)}");
-            builder.AppendLine($"{indent}  ActiveSelf: {gameObject.activeSelf}");
-            builder.AppendLine($"{indent}  ActiveInHierarchy: {gameObject.activeInHierarchy}");
-            builder.AppendLine($"{indent}  Layer: {gameObject.layer}");
-            builder.AppendLine($"{indent}  Tag: {gameObject.tag}");
-            builder.AppendLine($"{indent}  Transform: localPos={gameObject.transform.localPosition}, localRot={gameObject.transform.localRotation}, localScale={gameObject.transform.localScale}");
-
-            Component[] components = gameObject.GetComponents<Component>();
-            builder.AppendLine($"{indent}  Components: {components.Length}");
-
-            for (int i = 0; i < components.Length; i++)
-            {
-                DumpComponent(components[i], builder, indentLevel + 1, visited);
-            }
-
-            Transform transform = gameObject.transform;
-            for (int i = 0; i < transform.childCount; i++)
-            {
-                DumpGameObject(transform.GetChild(i).gameObject, builder, indentLevel + 1, visited);
-            }
-        }
-
-        private static void DumpComponent(Component component, StringBuilder builder, int indentLevel, HashSet<object> visited)
-        {
-            string indent = GetIndent(indentLevel);
-
-            if (component == null)
-            {
-                builder.AppendLine($"{indent}Component: <missing>");
-                return;
-            }
-
-            Type type = component.GetType();
-            builder.AppendLine($"{indent}Component: {type.FullName}");
-            DumpObjectMembers(component, builder, indentLevel + 1, visited, 0);
-        }
-
-        private static void DumpObjectMembers(object obj, StringBuilder builder, int indentLevel, HashSet<object> visited, int depth)
-        {
-            if (obj == null)
-                return;
-
-            if (visited.Contains(obj))
-            {
-                builder.AppendLine($"{GetIndent(indentLevel)}<circular reference: {obj.GetType().FullName}>");
-                return;
-            }
-
-            if (depth > 2)
-            {
-                builder.AppendLine($"{GetIndent(indentLevel)}<max depth reached: {obj.GetType().FullName}>");
-                return;
-            }
-
-            visited.Add(obj);
-
-            Type type = obj.GetType();
-            BindingFlags flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic;
-
-            foreach (FieldInfo field in type.GetFields(flags))
-            {
-                if (field.IsStatic)
-                    continue;
-
-                object value;
-                try
-                {
-                    value = field.GetValue(obj);
-                }
-                catch (Exception ex)
-                {
-                    builder.AppendLine($"{GetIndent(indentLevel)}Field {field.Name}: <error: {ex.GetType().Name}> {ex.Message}");
-                    continue;
-                }
-
-                AppendValue(builder, indentLevel, $"Field {field.Name}", value, visited, depth + 1);
-            }
-
-            foreach (PropertyInfo property in type.GetProperties(flags))
-            {
-                if (!property.CanRead || property.GetIndexParameters().Length != 0)
-                    continue;
-
-                object value;
-                try
-                {
-                    value = property.GetValue(obj, null);
-                }
-                catch (Exception ex)
-                {
-                    builder.AppendLine($"{GetIndent(indentLevel)}Property {property.Name}: <error: {ex.GetType().Name}> {ex.Message}");
-                    continue;
-                }
-
-                AppendValue(builder, indentLevel, $"Property {property.Name}", value, visited, depth + 1);
-            }
-        }
-
-        private static void AppendValue(StringBuilder builder, int indentLevel, string label, object value, HashSet<object> visited, int depth)
-        {
-            string indent = GetIndent(indentLevel);
-
-            if (value == null)
-            {
-                builder.AppendLine($"{indent}{label}: null");
-                return;
-            }
-
-            if (value is string || value is char || value.GetType().IsPrimitive || value is decimal || value is Enum)
-            {
-                builder.AppendLine($"{indent}{label}: {value}");
-                return;
-            }
-
-            if (value is UnityEngine.Object unityObject)
-            {
-                builder.AppendLine($"{indent}{label}: {unityObject.GetType().FullName} \"{unityObject.name}\"");
-                return;
-            }
-
-            if (value is IEnumerable enumerable && value is not string)
-            {
-                builder.AppendLine($"{indent}{label}: {value.GetType().FullName}");
-
-                int index = 0;
-                foreach (object item in enumerable)
-                {
-                    if (index >= 64)
-                    {
-                        builder.AppendLine($"{GetIndent(indentLevel + 1)}[{index}]: <truncated>");
-                        break;
-                    }
-
-                    AppendValue(builder, indentLevel + 1, $"[{index}]", item, visited, depth + 1);
-                    index++;
-                }
-
-                return;
-            }
-
-            if (depth > 2)
-            {
-                builder.AppendLine($"{indent}{label}: {value.GetType().FullName}");
-                return;
-            }
-
-            builder.AppendLine($"{indent}{label}: {value.GetType().FullName}");
-            DumpObjectMembers(value, builder, indentLevel + 1, visited, depth);
-        }
-
-        private static string GetGameObjectPath(GameObject gameObject)
-        {
-            if (gameObject == null)
-                return string.Empty;
-
-            var names = new List<string>();
-            Transform current = gameObject.transform;
-
-            while (current != null)
-            {
-                names.Add(current.name);
-                current = current.parent;
-            }
-
-            names.Reverse();
-            return string.Join("/", names);
-        }
-
-        private static string GetIndent(int indentLevel)
-        {
-            return new string(' ', Math.Max(0, indentLevel) * 2);
-        }
-
-        private sealed class ReferenceEqualityComparer : IEqualityComparer<object>
-        {
-            public static readonly ReferenceEqualityComparer Instance = new ReferenceEqualityComparer();
-
-            public new bool Equals(object x, object y)
-            {
-                return ReferenceEquals(x, y);
-            }
-
-            public int GetHashCode(object obj)
-            {
-                return obj == null ? 0 : RuntimeHelpers.GetHashCode(obj);
-            }
         }
     }
 }

@@ -21,9 +21,6 @@ namespace MultiplayerTools
                 if (pc == null)
                     continue;
 
-                if (FakeServerPlayer.IsFakeServerPlayerControl(pc))
-                    continue;
-
                 try
                 {
                     if (pc.IsOwner)
@@ -33,12 +30,6 @@ namespace MultiplayerTools
                 {
                     continue;
                 }
-            }
-
-            foreach (var pc in players)
-            {
-                if (pc != null && !FakeServerPlayer.IsFakeServerPlayerControl(pc))
-                    return pc;
             }
 
             return null;

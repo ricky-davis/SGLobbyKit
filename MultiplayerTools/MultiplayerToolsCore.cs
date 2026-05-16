@@ -82,7 +82,7 @@ namespace MultiplayerTools
 
                 var val = refs[index];
 
-                if (val == null || FakeServerPlayer.IsFakeServerReference(val))
+                if (val == null)
                     return;
 
                 if (val.IsLocalPlayerInstance())
@@ -108,7 +108,7 @@ namespace MultiplayerTools
         }
         public void PlayerJoinedGame(PlayerReference p)
         {
-            if (p == null || FakeServerPlayer.IsFakeServerReference(p))
+            if (p == null)
                 return;
 
             if (!players.Contains(p))
