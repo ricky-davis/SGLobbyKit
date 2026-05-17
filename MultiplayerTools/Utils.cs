@@ -50,6 +50,9 @@ namespace MultiplayerTools
             for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
             {
                 PlayerReference playerRef = manager.sync_PlayerReferences[i];
+                if (playerRef == null)
+                    continue;
+
                 string username = sanitized ? SanitizeUsername(playerRef.Username) : playerRef.Username;
                 if (string.IsNullOrWhiteSpace(username))
                     continue;
@@ -77,6 +80,9 @@ namespace MultiplayerTools
             for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
             {
                 PlayerReference playerRef = manager.sync_PlayerReferences[i];
+                if (playerRef == null)
+                    continue;
+
                 if (playerRef.ConnectionID == connectionId)
                     return playerRef;
             }
