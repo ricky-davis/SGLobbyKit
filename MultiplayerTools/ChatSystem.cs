@@ -23,18 +23,25 @@ namespace MultiplayerTools.Patches
 
         private sealed class CommandDefinition
         {
-            public CommandDefinition(ChatCommandHandler handler, string usage, string description, bool hostCommand = false)
+            public CommandDefinition(
+                ChatCommandHandler handler,
+                string usage,
+                string description,
+                bool hostCommand = false,
+                bool hiddenFromHelp = false)
             {
                 Handler = handler;
                 Usage = usage;
                 Description = description;
                 HostCommand = hostCommand;
+                HiddenFromHelp = hiddenFromHelp;
             }
 
             public ChatCommandHandler Handler { get; }
             public string Usage { get; }
             public string Description { get; }
             public bool HostCommand { get; }
+            public bool HiddenFromHelp { get; }
         }
 
         private static readonly Dictionary<int, (string Message, int Frame)> LastCommandBySource = new();
@@ -44,7 +51,8 @@ namespace MultiplayerTools.Patches
             ["!help"] = new CommandDefinition(
                 HandleHelpCommand,
                 "!help [command]",
-                "Shows available commands or details for one command."),
+                "Shows available commands or details for one command.",
+                hiddenFromHelp: true),
             ["!bc"] = new CommandDefinition(
                 HandleBangCommandsCommand,
                 "!bc <on|off>",
@@ -53,8 +61,7 @@ namespace MultiplayerTools.Patches
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
                 "!tp <name>",
-                "Teleport to a player by name.",
-                hostCommand: false)
+                "Teleport to a player by name.")
         };
 
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
@@ -342,6 +349,11 @@ namespace MultiplayerTools.Patches
         }
 
         private static bool CanShowInHelp(CommandDefinition command, PlayerControl playerControl)
+        {
+            return !command.HiddenFromHelp && CanUseCommand(command, playerControl);
+        }
+
+        private static bool CanUseCommand(CommandDefinition command, PlayerControl playerControl)
         {
             return !command.HostCommand || playerControl.OwnerId == HostConnectionId;
         }

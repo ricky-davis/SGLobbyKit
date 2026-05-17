@@ -88,10 +88,7 @@ namespace MultiplayerTools
                 if (val.IsLocalPlayerInstance())
                 {
                     Instance.localPlayer = val;
-
-                    var hostPc = Utils.FindHostPlayer();
-                    if (hostPc != null && val.PlayerControl != null && hostPc == val.PlayerControl)
-                        isHost = true;
+                    isHost = val.ConnectionID == 32767;
                 }
 
                 Instance.PlayerJoinedGame(val);
@@ -101,9 +98,9 @@ namespace MultiplayerTools
         [HarmonyPatch(typeof(PlayerReferenceManager), "OnPlayerReferenceRemoved")]
         public static class PlayerLeavePatch
         {
-            private static void Postfix(PlayerReferenceManager __instance, int index)
+            private static void Postfix(PlayerReferenceManager __instance, int index, PlayerReference removedItem)
             {
-                Instance.PlayerLeftGame(index);
+                Instance.PlayerLeftGame(removedItem);
             }
         }
         public void PlayerJoinedGame(PlayerReference p)
@@ -115,23 +112,24 @@ namespace MultiplayerTools
                 players.Add(p);
 
             if (p.IsLocalPlayerInstance())
+            {
                 localPlayer = p;
+                isHost = p.ConnectionID == 32767;
+            }
         }
 
-        public void PlayerLeftGame(int index)
+        public void PlayerLeftGame(PlayerReference removedPlayer)
         {
-            if (index < 0 || index >= players.Count)
+            if (removedPlayer == null)
                 return;
 
-            var p = players[index];
+            players.Remove(removedPlayer);
 
-            if (p != null && p.IsLocalPlayerInstance())
+            if (localPlayer != null && localPlayer.ConnectionID == removedPlayer.ConnectionID)
             {
                 localPlayer = null;
                 isHost = false;
             }
-
-            players.RemoveAt(index);
         }
 
         public PlayerReference GetLocalPlayer()
