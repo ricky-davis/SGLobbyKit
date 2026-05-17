@@ -8,6 +8,7 @@ using Il2CppDissonance.Integrations.FishNet;
 using Il2Cpp_Scripts.Player;
 using Il2Cpp_Scripts.Systems.Chat;
 using UnityEngine;
+using System.Text.RegularExpressions;
 
 namespace MultiplayerTools.Patches
 {
@@ -68,8 +69,9 @@ namespace MultiplayerTools.Patches
             if (WasHandledThisFrame(localPlayer.ConnectionID, message))
                 return false;
 
-            if (!TryHandleCommand(message, localPlayer.ConnectionID, isHostLocal: true))
-                return true;
+            bool handledCommand = TryHandleCommand(message, localPlayer.ConnectionID, isHostLocal: true);
+            if (!handledCommand)
+                BroadcastMessage(0, message, localPlayer.Username, showAboveUser: localPlayer.ConnectionID);
 
             chatBox.inputFieldValue = string.Empty;
             chatBox.ClearInputBox();
@@ -91,11 +93,15 @@ namespace MultiplayerTools.Patches
             if (string.IsNullOrWhiteSpace(message))
                 return true;
 
+            if (message.StartsWith("/", StringComparison.Ordinal))
+                return true;
+
             if (WasHandledThisFrame(networkConnection.ClientId, message))
                 return false;
 
-            if (!TryHandleCommand(message, networkConnection.ClientId, isHostLocal: false))
-                return true;
+            bool handledCommand = TryHandleCommand(message, networkConnection.ClientId, isHostLocal: false);
+            if (!handledCommand)
+                BroadcastPlayerMessage(networkConnection.ClientId, message, chatMessage.Username);
 
             MarkHandled(networkConnection.ClientId, message);
             return false;
@@ -163,14 +169,59 @@ namespace MultiplayerTools.Patches
 
         private static ChatMessage CreatePublicChatMessage(string text, string username, int showAboveUser)
         {
+            string cleanedUsername = AutoCloseTmpRichText(username);
             return new ChatMessage
             {
                 Username = string.Empty,
                 UserProductId = GetPublicMessageProductId(showAboveUser),
-                Message = $"{username}: {text}",
+                Message = string.IsNullOrWhiteSpace(cleanedUsername) ? text : $"{cleanedUsername}</style>:a {text}",
                 MessageType = ChatMessageType.Chat,
                 SystemMessageType = (SystemMessageType)(-1)
             };
+        }
+
+        public static string AutoCloseTmpRichText(string text)
+        {
+            var tagRegex = new Regex(@"<(/?)([a-zA-Z#][a-zA-Z0-9#-]*)(?:=[^>]*)?>");
+            var openTags = new Stack<string>();
+            var selfClosing = new HashSet<string> { "br", "space", "sprite", "page" };
+
+            foreach (Match m in tagRegex.Matches(text))
+            {
+                string slash = m.Groups[1].Value;
+                string tag = m.Groups[2].Value.ToLowerInvariant();
+
+                if (tag.StartsWith("#"))
+                    tag = "color";
+
+                if (selfClosing.Contains(tag))
+                    continue;
+
+                if (slash == "/")
+                {
+                    if (openTags.Count > 0 && openTags.Peek() == tag)
+                        openTags.Pop();
+                }
+                else
+                {
+                    openTags.Push(tag);
+                }
+            }
+
+            while (openTags.Count > 0)
+                text += $"</{openTags.Pop()}>";
+
+            return text;
+        }
+
+        private static void BroadcastPlayerMessage(int connectionId, string text, string fallbackUsername = "")
+        {
+            PlayerReference player = Utils.FindPlayerFromConnectionId(connectionId);
+            string username = !string.IsNullOrWhiteSpace(player?.Username)
+                ? player.Username
+                : fallbackUsername;
+
+            BroadcastMessage(0, text, username, showAboveUser: connectionId);
         }
 
         private static ChatMessage CreatePrivateReplyMessage(string text)
