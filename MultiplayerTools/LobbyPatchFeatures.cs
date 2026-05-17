@@ -1,14 +1,14 @@
-﻿using HarmonyLib;
+﻿using System.Collections;
+using HarmonyLib;
 using Il2Cpp;
 using Il2CppPlayEveryWare.EpicOnlineServices.Samples;
-using Il2Cpp_Scripts.Binary;
 using Il2Cpp_Scripts.Managers;
 using Il2Cpp_Scripts.UI.Pre_Game;
+using MelonLoader;
 using UnityEngine;
 using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Il2CppTMPro;
-using Il2Cpp_Scripts.UI.Popups;
 
 namespace MultiplayerTools.Patches
 {
@@ -37,65 +37,22 @@ namespace MultiplayerTools.Patches
             return string.IsNullOrWhiteSpace(playerName) ? "Sledding Lobby" : playerName + "'s Lobby";
         }
 
-        private static void QuickHost()
-        {
-            if (MultiplayerToolsCore.IsPasswordProtected && string.IsNullOrWhiteSpace(MultiplayerToolsCore.LobbyPassword))
-            {
-                UiReferenceController uiInstance = UiReferenceController.Instance;
-                if (uiInstance?.createLobby != null)
-                {
-                    uiInstance.OpenMenu(uiInstance.createLobby);
-                    UICreateLobby createLobby = uiInstance.createLobby.panel?.GetComponent<UICreateLobby>();
-                    if (createLobby?.passwordInputField != null)
-                    {
-                        // OpenMenu has already shown the panel; select the missing field immediately.
-                        createLobby.passwordInputField.Select();
-                        createLobby.passwordInputField.ActivateInputField();
-                    }
-                }
-                else
-                {
-                    Debug.LogWarning("[MultiplayerTools] Quick Host failed: create lobby UI unavailable.");
-                }
-
-                PopupUiManager.Instance?.ShowPopup(PopupMessage.PasswordFieldIsEmpty, "", PopupType.Error);
-                return;
-            }
-
-            GameInfo gameInfo = GameInfo.Instance;
-            LobbyManager lobbyManager = gameInfo?.LobbyManager;
-            if (lobbyManager == null)
-            {
-                Debug.LogWarning("[MultiplayerTools] Quick Host failed: lobby manager unavailable.");
-                return;
-            }
-
-            string password = MultiplayerToolsCore.IsPasswordProtected ? MultiplayerToolsCore.LobbyPassword : string.Empty;
-            string region = PlayerPrefsManager.Instance?.playerSavedSettings?.playerRegion;
-            lobbyManager.CreateLobby(
-                GetInputLobbyName(),
-                Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64),
-                MultiplayerToolsCore.IsPublicLobby,
-                !MultiplayerToolsCore.IsTextChatOnly,
-                MultiplayerToolsCore.IsPasswordProtected,
-                password,
-                MultiplayerToolsCore.IsPeacefulMode,
-                LobbyUtilities.PlatformString(),
-                string.IsNullOrEmpty(region) ? "default" : region,
-                false);
-        }
-
         public static void SetupCustomLobbyNameInput(UICreateLobby instance)
         {
             if (instance == null)
                 return;
-            
+
+            dynamic label = instance.lobbyNameText;
+            dynamic passwordInput = instance.passwordInputField;
+            if (label == null || passwordInput == null)
+                return;
+
+            var layoutParent = label.transform.parent;
+
             // Create the Server Name Input field from the Password Input field
-            if (CustomLobbyNameInput == null)
+            bool needsLobbyNameInput = CustomLobbyNameInput == null || CustomLobbyNameInput.transform.parent != layoutParent;
+            if (needsLobbyNameInput)
             {
-                dynamic label = instance.lobbyNameText;
-                dynamic passwordInput = instance.passwordInputField;
-                var layoutParent = label.transform.parent;
                 var labelIndex = label.transform.GetSiblingIndex();
 
                 var cloneGO = Object.Instantiate(passwordInput.gameObject, layoutParent);
@@ -137,8 +94,14 @@ namespace MultiplayerTools.Patches
                 cloneGO.SetActive(true);
                 CustomLobbyNameInput = cloneInput;
             }
+            else
+            {
+                CustomLobbyNameInput.gameObject.SetActive(true);
+                label.gameObject.SetActive(false);
+            }
             // Setup the Max Players slider
-            if (MaxPlayerSlider == null){
+            if (MaxPlayerSlider == null || MaxPlayerSlider != instance.maxPlayersSlider)
+            {
                 MaxPlayerSlider = instance.maxPlayersSlider;
                 MaxPlayerSlider.slider.maxValue = 64f;
                 MaxPlayerSlider.slider.value = Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64);
@@ -148,6 +111,17 @@ namespace MultiplayerTools.Patches
                     MultiplayerToolsCore.SetServerCapacity(Mathf.RoundToInt(value));
                 }));
             }
+            Toggle textChatOnlyToggle = instance.textChatOnlyToggle;
+            if (EnableGuestBangCommandsToggle == null)
+            {
+                TogglesInitialized = false;
+            }
+            else if (EnableGuestBangCommandsToggle.transform.parent != textChatOnlyToggle.transform.parent)
+            {
+                EnableGuestBangCommandsToggle = null;
+                TogglesInitialized = false;
+            }
+
             if (TogglesInitialized == false)
             {
                 Toggle publicLobbyToggle = instance.publicLobbyToggle;
@@ -182,7 +156,6 @@ namespace MultiplayerTools.Patches
                 }));
 
 
-                Toggle textChatOnlyToggle = instance.textChatOnlyToggle;
                 textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
                 textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
                 {
@@ -205,13 +178,13 @@ namespace MultiplayerTools.Patches
                             MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
                         }));
 
-                        var label = cloneGO.GetComponentInChildren<TMP_Text>(true);
-                        if (label != null)
+                        var toggleLabel = cloneGO.GetComponentInChildren<TMP_Text>(true);
+                        if (toggleLabel != null)
                         {
-                            var loc = label.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
+                            var loc = toggleLabel.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
                             if (loc != null)
                                 Object.Destroy(loc);
-                            label.text = "Enable Guest Bang Commands";
+                            toggleLabel.text = "Enable Guest Bang Commands";
                         }
 
                         cloneGO.SetActive(true);
@@ -222,6 +195,7 @@ namespace MultiplayerTools.Patches
                 {
                     EnableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
                 }
+                TogglesInitialized = true;
             }
         }
 
@@ -265,238 +239,256 @@ namespace MultiplayerTools.Patches
             SetupCustomLobbyNameInput(__instance);
         }
 
-        [HarmonyPatch(typeof(UIMainMenu), "OnHostClicked")]
-        [HarmonyPrefix]
-        private static bool UIMainMenu_OnHostClicked_Prefix(UIMainMenu __instance)
-        {
-            UiReferenceController uiInstance = UiReferenceController.Instance;
-            uiInstance.OpenMenu(uiInstance.createLobby);
-            return false;
-        }
-
         [HarmonyPatch(typeof(UIMainMenu), "OnEnable")]
         [HarmonyPostfix]
         private static void UIMainMenu_OnEnable_Postfix(UIMainMenu __instance)
         {
             try
             {
-                string lobbyName = GetInputLobbyName();
-                if (lobbyName.Length > 18)
-                    lobbyName = lobbyName.Substring(0, 15) + "...";
-
-                int maxPlayers = MaxPlayerSlider?.slider != null
-                    ? Mathf.RoundToInt(MaxPlayerSlider.slider.value)
-                    : Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64);
-                string leftSettings = $"Lobby Name: {lobbyName}\nMax Players: {maxPlayers}\nPublic/Invite: {(MultiplayerToolsCore.IsPublicLobby ? "Public" : "Invite")}";
-                string rightSettings = $"Requires Password: {(MultiplayerToolsCore.IsPasswordProtected ? "Yes" : "No")}\nTextOnly: {(MultiplayerToolsCore.IsTextChatOnly ? "Yes" : "No")}\nPeaceful: {(MultiplayerToolsCore.IsPeacefulMode ? "Yes" : "No")}";
-
-                GameObject buttonObject = GameObject.Find("(Button) Quick Host");
-                if (buttonObject == null)
-                {
-                    if (__instance == null || __instance.hostButton == null)
-                        return;
-
-                    Transform originalRow = __instance.hostButton.transform.parent;
-                    if (originalRow == null || originalRow.parent == null || originalRow.parent.Find("horizontal layout (quick host)") != null)
-                        return;
-
-                    GameObject rowClone = Object.Instantiate(originalRow.gameObject, originalRow.parent);
-                    if (rowClone == null)
-                        return;
-
-                    rowClone.name = "horizontal layout (quick host)";
-                    rowClone.transform.SetSiblingIndex(originalRow.GetSiblingIndex() + 1);
-
-                    int buttonIndex = Mathf.Clamp(__instance.hostButton.transform.GetSiblingIndex(), 0, rowClone.transform.childCount - 1);
-                    buttonObject = rowClone.transform.GetChild(buttonIndex).gameObject;
-                    for (int i = rowClone.transform.childCount - 1; i >= 0; i--)
-                    {
-                        GameObject child = rowClone.transform.GetChild(i).gameObject;
-                        if (child != buttonObject)
-                            Object.DestroyImmediate(child);
-                    }
-
-                    buttonObject.name = "(Button) Quick Host";
-                }
-
-                LayoutGroup buttonLayout = buttonObject.GetComponent<LayoutGroup>();
-                if (buttonLayout != null)
-                    buttonLayout.enabled = false;
-
-                ContentSizeFitter contentSizeFitter = buttonObject.GetComponent<ContentSizeFitter>();
-                if (contentSizeFitter != null)
-                    contentSizeFitter.enabled = false;
-
-                foreach (Image childImage in buttonObject.GetComponentsInChildren<Image>(true))
-                {
-                    if (childImage.gameObject != buttonObject)
-                        childImage.gameObject.SetActive(false);
-                }
-
-                TMP_Text titleText = null;
-                TMP_Text leftText = null;
-                TMP_Text rightText = null;
-                TMP_Text sourceText = null;
-                foreach (TMP_Text candidate in buttonObject.GetComponentsInChildren<TMP_Text>(true))
-                {
-                    if (candidate == null)
-                        continue;
-
-                    if (candidate.gameObject.name == "Quick Host Title")
-                        titleText = candidate;
-                    else if (candidate.gameObject.name == "Quick Host Settings Left")
-                        leftText = candidate;
-                    else if (candidate.gameObject.name == "Quick Host Settings Right")
-                        rightText = candidate;
-                    else if (sourceText == null)
-                        sourceText = candidate;
-                }
-
-                TMP_Text templateText = titleText ?? leftText ?? rightText ?? sourceText;
-                if (templateText == null)
+                if (__instance == null || __instance.hostButton == null)
                     return;
 
-                if (titleText == null)
+                Transform hostRow = __instance.hostButton.transform.parent;
+                if (hostRow == null)
+                    return;
+
+                Transform menuLayout = hostRow.parent;
+                Transform oldQuickHostRow = menuLayout?.Find("horizontal layout (quick host)");
+                if (oldQuickHostRow != null)
+                    Object.DestroyImmediate(oldQuickHostRow.gameObject);
+
+                __instance.hostButton.gameObject.SetActive(false);
+
+                Button joinButton = __instance.joinButton ?? GameObject.Find("(Button) JOIN")?.GetComponent<Button>();
+                if (joinButton != null)
                 {
-                    GameObject titleObject = Object.Instantiate(templateText.gameObject, buttonObject.transform);
-                    titleObject.name = "Quick Host Title";
-                    titleText = titleObject.GetComponent<TMP_Text>();
+                    joinButton.transform.SetSiblingIndex(0);
+                    joinButton.gameObject.SetActive(true);
+
+                    LayoutElement joinLayout = joinButton.GetComponent<LayoutElement>();
+                    if (joinLayout == null)
+                        joinLayout = joinButton.gameObject.AddComponent<LayoutElement>();
+                    joinLayout.flexibleWidth = 1f;
+                    joinLayout.preferredWidth = -1f;
                 }
 
-                if (leftText == null)
+                Button quitButton = __instance.quitButton ?? GameObject.Find("(Button) Quit")?.GetComponent<Button>();
+                Image quitButtonImage = quitButton != null ? quitButton.GetComponent<Image>() : null;
+                if (quitButtonImage != null)
+                    quitButtonImage.color = new Color(0.867f, 0.298f, 0.298f, 1f);
+                Shadow quitButtonImageShadow = quitButton != null ? quitButton.GetComponent<Shadow>() : null;
+                if (quitButtonImageShadow != null)
+                    quitButtonImageShadow.effectColor = new Color(0.298f, 0f, 0f, 1f);
+
+                HorizontalLayoutGroup hostRowLayout = hostRow.GetComponent<HorizontalLayoutGroup>();
+                if (hostRowLayout != null)
                 {
-                    GameObject leftObject = Object.Instantiate(templateText.gameObject, buttonObject.transform);
-                    leftObject.name = "Quick Host Settings Left";
-                    leftText = leftObject.GetComponent<TMP_Text>();
+                    hostRowLayout.childControlWidth = true;
+                    hostRowLayout.childForceExpandWidth = true;
                 }
 
-                if (rightText == null)
+                RectTransform menuLayoutRect = menuLayout?.GetComponent<RectTransform>();
+                if (menuLayoutRect != null)
                 {
-                    GameObject rightObject = Object.Instantiate(templateText.gameObject, buttonObject.transform);
-                    rightObject.name = "Quick Host Settings Right";
-                    rightText = rightObject.GetComponent<TMP_Text>();
+                    menuLayoutRect.localScale = new Vector3(0.78f, 0.78f, 1f);
+                    menuLayoutRect.anchoredPosition = new Vector2(295f, 0f);
                 }
 
-                if (titleText != null && titleText.transform.parent != buttonObject.transform)
-                    titleText.transform.SetParent(buttonObject.transform, false);
-                if (leftText != null && leftText.transform.parent != buttonObject.transform)
-                    leftText.transform.SetParent(buttonObject.transform, false);
-                if (rightText != null && rightText.transform.parent != buttonObject.transform)
-                    rightText.transform.SetParent(buttonObject.transform, false);
+                Transform visibleMainMenuPanel = menuLayout?.parent;
+                Transform embedParent = visibleMainMenuPanel?.parent ?? __instance.transform;
 
-                foreach (TMP_Text candidate in buttonObject.GetComponentsInChildren<TMP_Text>(true))
+                Transform createLobbyRoot = embedParent?.Find("UI_CreateLobby");
+                UiReferenceController uiInstance = UiReferenceController.Instance;
+                GameObject createLobbyPanel = uiInstance != null ? uiInstance.createLobby.panel : null;
+
+                if (createLobbyRoot == null && createLobbyPanel != null)
+                    createLobbyRoot = createLobbyPanel.transform;
+
+                UICreateLobby createLobby = createLobbyRoot?.GetComponent<UICreateLobby>()
+                    ?? createLobbyRoot?.GetComponentInChildren<UICreateLobby>(true)
+                    ?? createLobbyPanel?.GetComponent<UICreateLobby>()
+                    ?? createLobbyPanel?.GetComponentInParent<UICreateLobby>()
+                    ?? createLobbyPanel?.GetComponentInChildren<UICreateLobby>(true);
+
+                if (createLobbyRoot == null && createLobby != null)
+                    createLobbyRoot = createLobby.transform;
+
+                if (createLobbyRoot == null)
                 {
-                    if (candidate != titleText && candidate != leftText && candidate != rightText)
-                        candidate.gameObject.SetActive(false);
+                    Debug.LogWarning("[MultiplayerTools] Could not embed create lobby UI: UI_CreateLobby root was not found.");
+                    return;
                 }
 
-                if (titleText != null)
+                for (Transform parent = createLobbyRoot.parent; parent != null && parent != embedParent; parent = parent.parent)
                 {
-                    titleText.gameObject.SetActive(true);
-                    titleText.transform.SetAsLastSibling();
-                    var loc = titleText.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                    if (loc != null)
-                        Object.DestroyImmediate(loc);
+                    if (parent.name.Contains("CreateLobby") || parent.GetComponent<UICreateLobby>() != null)
+                        createLobbyRoot = parent;
+                }
 
-                    titleText.text = "QUICK HOST";
-                    titleText.fontSize = 30f;
-                    titleText.characterSpacing = 0f;
-                    titleText.wordSpacing = 0f;
-                    titleText.lineSpacing = 0f;
-                    titleText.alignment = TextAlignmentOptions.Center;
-                    titleText.enableAutoSizing = false;
-                    titleText.enableWordWrapping = false;
-                    RectTransform titleRect = titleText.GetComponent<RectTransform>();
-                    if (titleRect != null)
+                if (createLobby == null)
+                    createLobby = createLobbyRoot.GetComponent<UICreateLobby>() ?? createLobbyRoot.GetComponentInChildren<UICreateLobby>(true);
+                if (createLobbyPanel == null && createLobby != null)
+                    createLobbyPanel = createLobby.gameObject;
+
+                GameObject createLobbyRootObject = createLobbyRoot.gameObject;
+                if (embedParent != null && createLobbyRoot.parent != embedParent)
+                    createLobbyRoot.SetParent(embedParent, false);
+                createLobbyRoot.SetAsLastSibling();
+
+                RectTransform createLobbyRect = createLobbyRootObject.GetComponent<RectTransform>();
+                if (createLobbyRect != null)
+                {
+                    createLobbyRect.anchorMin = new Vector2(0.5f, 0.5f);
+                    createLobbyRect.anchorMax = new Vector2(0.5f, 0.5f);
+                    createLobbyRect.pivot = new Vector2(0.5f, 0.5f);
+                    createLobbyRect.localScale = new Vector3(0.9f, 0.9f, 1f);
+                    createLobbyRect.anchoredPosition = new Vector2(-295f, 0f);
+                }
+
+                createLobbyRootObject.SetActive(true);
+                Transform panelsContainer = null;
+                for (int i = 0; i < createLobbyRoot.childCount; i++)
+                {
+                    Transform child = createLobbyRoot.GetChild(i);
+                    if (child == null || child.name.Contains("BackgroundFade"))
+                        continue;
+
+                    child.gameObject.SetActive(true);
+                    if (child.name.Contains("Panels"))
+                        panelsContainer = child;
+                }
+
+                if (panelsContainer != null)
+                {
+                    for (int i = 0; i < panelsContainer.childCount; i++)
                     {
-                        titleRect.localScale = Vector3.one;
-                        titleRect.anchorMin = new Vector2(0.36f, 0f);
-                        titleRect.anchorMax = new Vector2(0.64f, 1f);
-                        titleRect.offsetMin = Vector2.zero;
-                        titleRect.offsetMax = Vector2.zero;
+                        Transform child = panelsContainer.GetChild(i);
+                        if (child != null && !child.name.Contains("Editor"))
+                            child.gameObject.SetActive(true);
                     }
-                    titleText.ForceMeshUpdate();
                 }
 
-                if (leftText != null)
+                if (createLobbyPanel != null)
                 {
-                    leftText.gameObject.SetActive(true);
-                    leftText.transform.SetAsLastSibling();
-                    var loc = leftText.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                    if (loc != null)
-                        Object.DestroyImmediate(loc);
-
-                    leftText.text = leftSettings;
-                    leftText.fontSize = 13f;
-                    leftText.characterSpacing = 0f;
-                    leftText.wordSpacing = 0f;
-                    leftText.lineSpacing = 0f;
-                    leftText.alignment = TextAlignmentOptions.MidlineLeft;
-                    leftText.enableAutoSizing = false;
-                    leftText.enableWordWrapping = false;
-                    Color leftColor = leftText.color;
-                    leftColor.a = 0.86f;
-                    leftText.color = leftColor;
-
-                    RectTransform leftRect = leftText.GetComponent<RectTransform>();
-                    if (leftRect != null)
+                    for (Transform target = createLobbyPanel.transform; target != null; target = target.parent)
                     {
-                        leftRect.localScale = Vector3.one;
-                        leftRect.anchorMin = new Vector2(0f, 0f);
-                        leftRect.anchorMax = new Vector2(0.36f, 1f);
-                        leftRect.offsetMin = new Vector2(16f, 8f);
-                        leftRect.offsetMax = new Vector2(-8f, -8f);
+                        target.gameObject.SetActive(true);
+                        if (target == createLobbyRoot)
+                            break;
                     }
-                    leftText.ForceMeshUpdate();
                 }
 
-                if (rightText != null)
+                if (createLobby != null)
                 {
-                    rightText.gameObject.SetActive(true);
-                    rightText.transform.SetAsLastSibling();
-                    var loc = rightText.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                    if (loc != null)
-                        Object.DestroyImmediate(loc);
-
-                    rightText.text = rightSettings;
-                    rightText.fontSize = 13f;
-                    rightText.characterSpacing = 0f;
-                    rightText.wordSpacing = 0f;
-                    rightText.lineSpacing = 0f;
-                    rightText.alignment = TextAlignmentOptions.MidlineRight;
-                    rightText.enableAutoSizing = false;
-                    rightText.enableWordWrapping = false;
-                    Color rightColor = rightText.color;
-                    rightColor.a = 0.86f;
-                    rightText.color = rightColor;
-
-                    RectTransform rightRect = rightText.GetComponent<RectTransform>();
-                    if (rightRect != null)
+                    for (Transform target = createLobby.transform; target != null; target = target.parent)
                     {
-                        rightRect.localScale = Vector3.one;
-                        rightRect.anchorMin = new Vector2(0.64f, 0f);
-                        rightRect.anchorMax = new Vector2(1f, 1f);
-                        rightRect.offsetMin = new Vector2(8f, 8f);
-                        rightRect.offsetMax = new Vector2(-16f, -8f);
+                        target.gameObject.SetActive(true);
+                        if (target == createLobbyRoot)
+                            break;
                     }
-                    rightText.ForceMeshUpdate();
                 }
 
-                Image image = buttonObject.GetComponent<Image>();
-                if (image != null)
-                    image.color = new Color(0.3f, 0.7f, 0.3f, 1f);
+                createLobby?.ShowPanel();
+                SetupCustomLobbyNameInput(createLobby);
 
-                Button quickHostButton = buttonObject.GetComponent<Button>();
-                if (quickHostButton != null)
+                foreach (CanvasGroup createLobbyCanvas in createLobbyRootObject.GetComponentsInChildren<CanvasGroup>(true))
                 {
-                    quickHostButton.onClick.RemoveAllListeners();
-                    quickHostButton.onClick.AddListener((UnityEngine.Events.UnityAction)QuickHost);
+                    createLobbyCanvas.alpha = 1f;
+                    createLobbyCanvas.interactable = true;
+                    createLobbyCanvas.blocksRaycasts = true;
                 }
+
+                if (visibleMainMenuPanel != null)
+                {
+                    visibleMainMenuPanel.gameObject.SetActive(true);
+                    CanvasGroup mainMenuCanvas = visibleMainMenuPanel.GetComponent<CanvasGroup>();
+                    if (mainMenuCanvas != null)
+                    {
+                        mainMenuCanvas.alpha = 1f;
+                        mainMenuCanvas.interactable = true;
+                        mainMenuCanvas.blocksRaycasts = true;
+                    }
+                }
+
+                Debug.Log($"[MultiplayerTools] Embedded create lobby UI: {createLobbyRootObject.name} under {embedParent?.name ?? "null"}");
+                MelonCoroutines.Start(ActivateEmbeddedCreateLobbyForNextFrames(embedParent));
             }
             catch (System.Exception ex)
             {
-                Debug.LogWarning($"[MultiplayerTools] Failed to inject Quick Host button: {ex}");
+                Debug.LogWarning($"[MultiplayerTools] Failed to embed create lobby UI: {ex}");
             }
+        }
+
+        private static IEnumerator ActivateEmbeddedCreateLobbyForNextFrames(Transform mainMenuRoot)
+        {
+            for (int frame = 0; frame < 10; frame++)
+            {
+                yield return null;
+
+                Transform createLobbyRoot = mainMenuRoot?.Find("UI_CreateLobby");
+                if (createLobbyRoot == null)
+                    continue;
+
+                createLobbyRoot.gameObject.SetActive(true);
+                for (int i = 0; i < createLobbyRoot.childCount; i++)
+                {
+                    Transform child = createLobbyRoot.GetChild(i);
+                    if (child == null || child.name.Contains("BackgroundFade"))
+                        continue;
+
+                    child.gameObject.SetActive(true);
+
+                    if (!child.name.Contains("Panels"))
+                        continue;
+
+                    for (int j = 0; j < child.childCount; j++)
+                    {
+                        Transform panelChild = child.GetChild(j);
+                        if (panelChild == null || panelChild.name.Contains("Editor"))
+                            continue;
+
+                        panelChild.gameObject.SetActive(true);
+                    }
+                }
+
+                UICreateLobby createLobby = createLobbyRoot.GetComponent<UICreateLobby>()
+                    ?? createLobbyRoot.GetComponentInChildren<UICreateLobby>(true);
+                if (createLobby != null)
+                    SetupCustomLobbyNameInput(createLobby);
+            }
+        }
+
+        [HarmonyPatch(typeof(LobbyManager), "OnCreateLobbyComplete")]
+        [HarmonyPostfix]
+        private static void LobbyManager_OnCreateLobbyComplete_Postfix()
+        {
+            HideEmbeddedCreateLobby();
+        }
+
+        private static void HideEmbeddedCreateLobby()
+        {
+            foreach (UICreateLobby createLobby in Resources.FindObjectsOfTypeAll<UICreateLobby>())
+            {
+                if (createLobby == null)
+                    continue;
+
+                Transform createLobbyRoot = createLobby.transform;
+                for (Transform parent = createLobbyRoot.parent; parent != null; parent = parent.parent)
+                {
+                    if (parent.name.Contains("CreateLobby") || parent.GetComponent<UICreateLobby>() != null)
+                        createLobbyRoot = parent;
+                }
+
+                createLobbyRoot.gameObject.SetActive(false);
+                break;
+            }
+        }
+
+        [HarmonyPatch(typeof(UIMainMenu), "OnDisable")]
+        [HarmonyPostfix]
+        private static void UIMainMenu_OnDisable_Postfix()
+        {
+            HideEmbeddedCreateLobby();
         }
 
     }
