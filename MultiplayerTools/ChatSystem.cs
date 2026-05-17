@@ -23,16 +23,18 @@ namespace MultiplayerTools.Patches
 
         private sealed class CommandDefinition
         {
-            public CommandDefinition(ChatCommandHandler handler, string usage, string description)
+            public CommandDefinition(ChatCommandHandler handler, string usage, string description, bool hostCommand = false)
             {
                 Handler = handler;
                 Usage = usage;
                 Description = description;
+                HostCommand = hostCommand;
             }
 
             public ChatCommandHandler Handler { get; }
             public string Usage { get; }
             public string Description { get; }
+            public bool HostCommand { get; }
         }
 
         private static readonly Dictionary<int, (string Message, int Frame)> LastCommandBySource = new();
@@ -43,10 +45,16 @@ namespace MultiplayerTools.Patches
                 HandleHelpCommand,
                 "!help [command]",
                 "Shows available commands or details for one command."),
+            ["!bc"] = new CommandDefinition(
+                HandleBangCommandsCommand,
+                "!bc <on|off>",
+                "Enable or disable guest bang commands.",
+                hostCommand: true),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
                 "!tp <name>",
-                "Teleport to a player by name.")
+                "Teleport to a player by name.",
+                hostCommand: false)
         };
 
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
@@ -140,9 +148,16 @@ namespace MultiplayerTools.Patches
             if (parts.Length == 0 || !Commands.TryGetValue(parts[0], out CommandDefinition command))
                 return false;
 
-            if (!MultiplayerToolsCore.EnableGuestBangCommands && connectionId != HostConnectionId)
+            bool isHost = connectionId == HostConnectionId;
+            if (!MultiplayerToolsCore.EnableGuestBangCommands && !isHost)
             {
                 BroadcastMessage(connectionId, "<#FA0>Commands are disabled on this server.");
+                return true;
+            }
+
+            if (command.HostCommand && !isHost)
+            {
+                BroadcastMessage(connectionId, "<#F00>Only the host can use that command.");
                 return true;
             }
 
@@ -174,7 +189,7 @@ namespace MultiplayerTools.Patches
             {
                 Username = string.Empty,
                 UserProductId = GetPublicMessageProductId(showAboveUser),
-                Message = string.IsNullOrWhiteSpace(cleanedUsername) ? text : $"{cleanedUsername}</style>:a {text}",
+                Message = string.IsNullOrWhiteSpace(cleanedUsername) ? text : $"{cleanedUsername}: {text}",
                 MessageType = ChatMessageType.Chat,
                 SystemMessageType = (SystemMessageType)(-1)
             };
@@ -310,8 +325,8 @@ namespace MultiplayerTools.Patches
                 if (!requested.StartsWith("!", StringComparison.Ordinal))
                     requested = "!" + requested;
 
-                if (Commands.TryGetValue(requested, out CommandDefinition command))
-                    Reply(playerControl, $"<#7FF>{command.Usage} - {command.Description}");
+                if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(command, playerControl))
+                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(command)} - {command.Description}");
                 else
                     Reply(playerControl, $"<#FA0>Unknown command: {requested}");
 
@@ -320,7 +335,47 @@ namespace MultiplayerTools.Patches
 
             Reply(playerControl, "<#7FF>Available commands:");
             foreach (CommandDefinition command in Commands.Values)
-                Reply(playerControl, $"<#7FF>{command.Usage}");
+            {
+                if (CanShowInHelp(command, playerControl))
+                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(command)}");
+            }
+        }
+
+        private static bool CanShowInHelp(CommandDefinition command, PlayerControl playerControl)
+        {
+            return !command.HostCommand || playerControl.OwnerId == HostConnectionId;
+        }
+
+        private static string FormatCommandUsage(CommandDefinition command)
+        {
+            return command.HostCommand ? $"{command.Usage} (host)" : command.Usage;
+        }
+
+        private static void HandleBangCommandsCommand(PlayerControl playerControl, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                string state = MultiplayerToolsCore.EnableGuestBangCommands ? "enabled" : "disabled";
+                Reply(playerControl, $"<#7FF>Guest bang commands are {state}. Usage: !bangcommands <on|off>");
+                return;
+            }
+
+            string value = args.Trim().ToLowerInvariant();
+            bool? enabled = value switch
+            {
+                "on" or "enable" or "enabled" or "true" or "1" => true,
+                "off" or "disable" or "disabled" or "false" or "0" => false,
+                _ => null
+            };
+
+            if (!enabled.HasValue)
+            {
+                Reply(playerControl, "<#F00>Usage: !bangcommands <on|off>");
+                return;
+            }
+
+            MultiplayerToolsCore.SetEnableGuestBangCommands(enabled.Value);
+            Reply(playerControl, $"<#FF0>Guest bang commands {(enabled.Value ? "enabled" : "disabled")}.");
         }
 
         private static void HandleTpCommand(PlayerControl playerControl, string args)
