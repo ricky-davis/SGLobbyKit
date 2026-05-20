@@ -28,6 +28,9 @@ namespace MultiplayerTools
         private static MelonPreferences_Entry<string> _lobbyPassword;
         private static MelonPreferences_Entry<bool> _isPeacefulMode;
         private static MelonPreferences_Entry<bool> _isTextChatOnly;
+        private static MelonPreferences_Entry<string> _messageOfTheDay;
+        private static MelonPreferences_Entry<bool> _showJoinMessages;
+        private static MelonPreferences_Entry<bool> _showLeaveMessages;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -37,6 +40,9 @@ namespace MultiplayerTools
         public static string LobbyPassword => _lobbyPassword?.Value ?? string.Empty;
         public static bool IsPeacefulMode => _isPeacefulMode?.Value ?? false;
         public static bool IsTextChatOnly => _isTextChatOnly?.Value ?? false;
+        public static string MessageOfTheDay => _messageOfTheDay?.Value ?? string.Empty;
+        public static bool ShowJoinMessages => _showJoinMessages?.Value ?? true;
+        public static bool ShowLeaveMessages => _showLeaveMessages?.Value ?? true;
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -59,6 +65,9 @@ namespace MultiplayerTools
             _lobbyPassword = _preferences.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
             _isPeacefulMode = _preferences.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
             _isTextChatOnly = _preferences.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+            _messageOfTheDay = _preferences.CreateEntry("MessageOfTheDay", string.Empty, "Message of the Day", "Private chat message sent to each player when they join your hosted lobby. Leave empty to disable.");
+            _showJoinMessages = _preferences.CreateEntry("ShowJoinMessages", true, "Show Join Messages", "Broadcast a chat message when a player joins your hosted lobby.");
+            _showLeaveMessages = _preferences.CreateEntry("ShowLeaveMessages", true, "Show Leave Messages", "Broadcast a chat message when a player leaves your hosted lobby.");
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
@@ -108,14 +117,24 @@ namespace MultiplayerTools
             if (p == null)
                 return;
 
-            if (!players.Contains(p))
+            bool isLocalPlayer = p.IsLocalPlayerInstance();
+            bool isNewConnection = !players.Any(player => player != null && player.ConnectionID == p.ConnectionID);
+            if (isNewConnection)
                 players.Add(p);
 
-            if (p.IsLocalPlayerInstance())
+            if (isLocalPlayer)
             {
                 localPlayer = p;
                 isHost = p.ConnectionID == 32767;
             }
+            else if (isHost && isNewConnection && ShowJoinMessages)
+            {
+                string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
+                Patches.ChatSystem.BroadcastSystemMessage($"<#FA0>{username} joined.");
+            }
+
+            if (isHost)
+                Patches.ChatSystem.SendMotdToPlayer(p);
         }
 
         public void PlayerLeftGame(PlayerReference removedPlayer)
@@ -123,7 +142,17 @@ namespace MultiplayerTools
             if (removedPlayer == null)
                 return;
 
-            players.Remove(removedPlayer);
+            bool wasTrackedPlayer = players.Any(player => player != null && player.ConnectionID == removedPlayer.ConnectionID);
+            bool isLocalPlayer = removedPlayer.IsLocalPlayerInstance();
+            if (isHost && wasTrackedPlayer && !isLocalPlayer && ShowLeaveMessages)
+            {
+                string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(removedPlayer.Username) ? "A player" : removedPlayer.Username);
+                Patches.ChatSystem.BroadcastSystemMessage($"<#FA0>{username} left.");
+            }
+
+            players.RemoveAll(player => player == null || player.ConnectionID == removedPlayer.ConnectionID);
+            Patches.ChatSystem.ForgetMotdRecipient(removedPlayer.ConnectionID);
+            Patches.ChatSystem.ForgetTeleportRequests(removedPlayer.ConnectionID);
 
             if (localPlayer != null && localPlayer.ConnectionID == removedPlayer.ConnectionID)
             {
@@ -205,6 +234,33 @@ namespace MultiplayerTools
             if (_isTextChatOnly == null)
                 return;
             _isTextChatOnly.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetMessageOfTheDay(string value)
+        {
+            if (_messageOfTheDay == null)
+                return;
+
+            _messageOfTheDay.Value = value ?? string.Empty;
+            MelonPreferences.Save();
+        }
+
+        public static void SetShowJoinMessages(bool value)
+        {
+            if (_showJoinMessages == null)
+                return;
+
+            _showJoinMessages.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetShowLeaveMessages(bool value)
+        {
+            if (_showLeaveMessages == null)
+                return;
+
+            _showLeaveMessages.Value = value;
             MelonPreferences.Save();
         }
 

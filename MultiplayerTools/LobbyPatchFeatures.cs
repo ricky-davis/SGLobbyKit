@@ -6,7 +6,6 @@ using Il2Cpp_Scripts.Managers;
 using Il2Cpp_Scripts.UI.Pre_Game;
 using MelonLoader;
 using UnityEngine;
-using Object = UnityEngine.Object;
 using UnityEngine.UI;
 using Il2CppTMPro;
 
@@ -48,29 +47,28 @@ namespace MultiplayerTools.Patches
             bool needsInput = _customLobbyNameInput == null || _customLobbyNameInput.transform.parent != layoutParent;
             if (!needsInput)
             {
-                _customLobbyNameInput.gameObject.SetActive(true);
-                lobbyNameText.gameObject.SetActive(false);
+                UILib.Assume(_customLobbyNameInput).Show();
+                UILib.Assume((GameObject)lobbyNameText.gameObject).Hide();
                 return;
             }
 
             int labelIndex = lobbyNameText.transform.GetSiblingIndex();
-            GameObject inputObject = Object.Instantiate(passwordInput.gameObject, layoutParent);
-            inputObject.name = "CustomLobbyNameInput";
-            inputObject.transform.SetSiblingIndex(labelIndex);
-
-            TMP_InputField input = inputObject.GetComponent<TMP_InputField>();
-            RectTransform inputRect = inputObject.GetComponent<RectTransform>();
-            if (input == null || inputRect == null)
+            TMP_InputField input = UILib.CloneInputField(
+                (TMP_InputField)passwordInput,
+                layoutParent,
+                name: "CustomLobbyNameInput",
+                siblingIndex: labelIndex);
+            if (input == null)
                 return;
 
-            inputRect.localScale = Vector3.one;
-            inputRect.sizeDelta = new Vector2(473.99f, 47.04f);
+            UILib.SetRect(input, sizeDelta: new Vector2(473.99f, 47.04f), scale: Vector3.one);
             input.characterLimit = 64;
             input.lineLimit = 1;
             input.lineType = TMP_InputField.LineType.SingleLine;
             input.contentType = TMP_InputField.ContentType.Standard;
             input.inputType = TMP_InputField.InputType.Standard;
             input.interactable = true;
+            UILib.SetInputTextStyle(input, 18f, autoSize: true, minFontSize: 12f);
 
             input.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
             {
@@ -84,15 +82,10 @@ namespace MultiplayerTools.Patches
 
             TMP_Text placeholderText = input.placeholder?.GetComponent<TMP_Text>();
             if (placeholderText != null)
-            {
-                var loc = placeholderText.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                if (loc != null)
-                    Object.Destroy(loc);
-                placeholderText.text = "Lobby name...";
-            }
+                UILib.SetText(placeholderText, "Lobby name...");
 
-            lobbyNameText.gameObject.SetActive(false);
-            inputObject.SetActive(true);
+            UILib.Assume((GameObject)lobbyNameText.gameObject).Hide();
+            UILib.Assume(input).Show();
             _customLobbyNameInput = input;
         }
 
@@ -102,10 +95,19 @@ namespace MultiplayerTools.Patches
             if (slider == null || slider.slider == null)
                 return;
 
+            bool needsListener = _maxPlayerSlider != slider;
             _maxPlayerSlider = slider;
             _maxPlayerSlider.slider.maxValue = 64f;
             _maxPlayerSlider.slider.SetValueWithoutNotify(Mathf.Clamp(MultiplayerToolsCore.ServerCapacity, 1, 64));
             _maxPlayerSlider.UpdateSliderValueDisplay();
+
+            if (!needsListener)
+                return;
+
+            _maxPlayerSlider.slider.onValueChanged.AddListener((UnityEngine.Events.UnityAction<float>)((value) =>
+            {
+                MultiplayerToolsCore.SetServerCapacity(Mathf.RoundToInt(value));
+            }));
         }
 
         private static void EnsureLobbyOptionBindings(UICreateLobby createLobby)
@@ -176,30 +178,21 @@ namespace MultiplayerTools.Patches
                 return;
             }
 
-            GameObject toggleObject = Object.Instantiate(textChatOnlyToggle.gameObject, textChatOnlyToggle.transform.parent);
-            toggleObject.name = "EnableGuestBangCommandsToggle";
-            toggleObject.transform.SetSiblingIndex(textChatOnlyToggle.transform.GetSiblingIndex() + 1);
-
-            Toggle toggle = toggleObject.GetComponent<Toggle>();
+            Toggle toggle = UILib.CloneToggle(
+                textChatOnlyToggle,
+                textChatOnlyToggle.transform.parent,
+                name: "EnableGuestBangCommandsToggle",
+                label: "Enable Guest !Bang Commands",
+                isOn: MultiplayerToolsCore.EnableGuestBangCommands,
+                onValueChanged: (UnityEngine.Events.UnityAction<bool>)((isOn) =>
+                {
+                    MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
+                }),
+                siblingIndex: textChatOnlyToggle.transform.GetSiblingIndex() + 1);
             if (toggle == null)
                 return;
 
-            toggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
-            toggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
-            {
-                MultiplayerToolsCore.SetEnableGuestBangCommands(isOn);
-            }));
-
-            TMP_Text toggleLabel = toggleObject.GetComponentInChildren<TMP_Text>(true);
-            if (toggleLabel != null)
-            {
-                var loc = toggleLabel.GetComponent<UnityEngine.Localization.Components.LocalizeStringEvent>();
-                if (loc != null)
-                    Object.Destroy(loc);
-                toggleLabel.text = "Enable Guest Bang Commands";
-            }
-
-            toggleObject.SetActive(true);
+            UILib.Assume(toggle).Show();
             _enableGuestBangCommandsToggle = toggle;
         }
 
@@ -251,6 +244,7 @@ namespace MultiplayerTools.Patches
                 if (createLobby == null)
                     return;
 
+                UILib.CaptureDefaultsFrom(createLobby.transform, overwriteExisting: false);
                 EnsureLobbyNameInput(createLobby);
                 EnsureMaxPlayerSlider(createLobby);
                 EnsureLobbyOptionBindings(createLobby);
@@ -274,6 +268,7 @@ namespace MultiplayerTools.Patches
             try
             {
                 Transform menuPanel = ConfigureMainMenu(__instance);
+                UILib.CaptureDefaultsFrom(menuPanel, overwriteExisting: false);
                 Transform createLobbyRoot = FindCreateLobbyRoot(menuPanel);
                 if (createLobbyRoot == null)
                 {
@@ -281,21 +276,12 @@ namespace MultiplayerTools.Patches
                     return;
                 }
 
-                if (menuPanel != null && createLobbyRoot.parent != menuPanel)
-                    createLobbyRoot.SetParent(menuPanel, false);
-                createLobbyRoot.SetAsLastSibling();
-
-                RectTransform createLobbyRect = createLobbyRoot.GetComponent<RectTransform>();
-                if (createLobbyRect != null)
-                {
-                    createLobbyRect.anchorMin = new Vector2(0.5f, 0.5f);
-                    createLobbyRect.anchorMax = new Vector2(0.5f, 0.5f);
-                    createLobbyRect.pivot = new Vector2(0.5f, 0.5f);
-                    createLobbyRect.localScale = new Vector3(0.9f, 0.9f, 1f);
-                    createLobbyRect.anchoredPosition = new Vector2(-295f, 0f);
-                }
-
-                //SetupCreateLobbyPanel(ActivateEmbeddedCreateLobby(createLobbyRoot, showPanel: true));
+                UILib.Assume(createLobbyRoot)
+                    .Reparent(menuPanel)
+                    .LastSibling()
+                    .CenterAnchors()
+                    .Scale(new Vector3(0.9f, 0.9f, 1f))
+                    .Move(new Vector2(-295f, 0f));
 
                 Debug.Log($"[MultiplayerTools] Embedded create lobby UI: {createLobbyRoot.name} under {menuPanel?.name ?? "null"}");
                 MelonCoroutines.Start(ActivateEmbeddedCreateLobbyForNextFrames(menuPanel));
@@ -318,31 +304,21 @@ namespace MultiplayerTools.Patches
 
             Transform oldQuickHostRow = menuLayout.Find("horizontal layout (quick host)");
             if (oldQuickHostRow != null)
-                Object.DestroyImmediate(oldQuickHostRow.gameObject);
+                UILib.Assume(oldQuickHostRow).DestroyImmediate();
 
-            mainMenu.hostButton.gameObject.SetActive(false);
+            UILib.Assume(mainMenu.hostButton).Hide();
 
             Button joinButton = mainMenu.joinButton ?? GameObject.Find("(Button) JOIN")?.GetComponent<Button>();
             if (joinButton != null)
             {
-                joinButton.transform.SetSiblingIndex(0);
-                joinButton.gameObject.SetActive(true);
-
-                LayoutElement joinLayout = joinButton.GetComponent<LayoutElement>();
-                if (joinLayout == null)
-                    joinLayout = joinButton.gameObject.AddComponent<LayoutElement>();
-                joinLayout.flexibleWidth = 1f;
-                joinLayout.preferredWidth = -1f;
+                UILib.Assume(joinButton)
+                    .SiblingIndex(0)
+                    .Show()
+                    .Layout(flexibleWidth: 1f, preferredWidth: -1f);
             }
 
             Button quitButton = mainMenu.quitButton ?? GameObject.Find("(Button) Quit")?.GetComponent<Button>();
-            Image quitImage = quitButton != null ? quitButton.GetComponent<Image>() : null;
-            if (quitImage != null)
-                quitImage.color = new Color(0.867f, 0.298f, 0.298f, 1f);
-
-            Shadow quitShadow = quitButton != null ? quitButton.GetComponent<Shadow>() : null;
-            if (quitShadow != null)
-                quitShadow.effectColor = new Color(0.298f, 0f, 0f, 1f);
+            UILib.SetButtonColors(quitButton, new Color(0.867f, 0.298f, 0.298f, 1f), new Color(0.298f, 0f, 0f, 1f));
 
             HorizontalLayoutGroup hostRowLayout = hostRow.GetComponent<HorizontalLayoutGroup>();
             if (hostRowLayout != null)
@@ -351,12 +327,9 @@ namespace MultiplayerTools.Patches
                 hostRowLayout.childForceExpandWidth = true;
             }
 
-            RectTransform menuLayoutRect = menuLayout.GetComponent<RectTransform>();
-            if (menuLayoutRect != null)
-            {
-                menuLayoutRect.localScale = new Vector3(0.78f, 0.78f, 1f);
-                menuLayoutRect.anchoredPosition = new Vector2(295f, 0f);
-            }
+            UILib.Assume(menuLayout)
+                .Scale(new Vector3(0.78f, 0.78f, 1f))
+                .Move(new Vector2(295f, 0f));
 
             return menuLayout.parent ?? mainMenu.transform;
         }
@@ -377,46 +350,29 @@ namespace MultiplayerTools.Patches
             if (createLobbyRoot == null)
                 return null;
 
-            createLobbyRoot.gameObject.SetActive(true);
+            UILib.Assume(createLobbyRoot).Show();
+            UILib.SetChildrenActive(createLobbyRoot, true, skipNameContains: "BackgroundFade");
             for (int i = 0; i < createLobbyRoot.childCount; i++)
             {
                 Transform child = createLobbyRoot.GetChild(i);
                 if (child == null || child.name.Contains("BackgroundFade"))
                     continue;
 
-                child.gameObject.SetActive(true);
                 if (child.name.Contains("Panels"))
-                {
-                    for (int j = 0; j < child.childCount; j++)
-                    {
-                        Transform panelChild = child.GetChild(j);
-                        if (panelChild != null && !panelChild.name.Contains("Editor"))
-                            panelChild.gameObject.SetActive(true);
-                    }
-                }
+                    UILib.SetChildrenActive(child, true, skipNameContains: "Editor");
             }
 
             UICreateLobby createLobby = createLobbyRoot.GetComponent<UICreateLobby>()
                 ?? createLobbyRoot.GetComponentInChildren<UICreateLobby>(true);
             if (createLobby != null)
             {
-                for (Transform target = createLobby.transform; target != null; target = target.parent)
-                {
-                    target.gameObject.SetActive(true);
-                    if (target == createLobbyRoot)
-                        break;
-                }
+                UILib.ActivatePathToRoot(createLobby.transform, createLobbyRoot);
 
                 if (showPanel)
                     createLobby.ShowPanel();
             }
 
-            foreach (CanvasGroup canvasGroup in createLobbyRoot.GetComponentsInChildren<CanvasGroup>(true))
-            {
-                canvasGroup.alpha = 1f;
-                canvasGroup.interactable = true;
-                canvasGroup.blocksRaycasts = true;
-            }
+            UILib.SetCanvasGroups(createLobbyRoot, alpha: 1f, interactable: true, blocksRaycasts: true);
 
             return createLobby;
         }

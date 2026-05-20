@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using HarmonyLib;
 using Il2Cpp;
@@ -7,6 +8,7 @@ using Il2CppFishNet.Connection;
 using Il2CppDissonance.Integrations.FishNet;
 using Il2Cpp_Scripts.Player;
 using Il2Cpp_Scripts.Systems.Chat;
+using MelonLoader;
 using UnityEngine;
 using System.Text.RegularExpressions;
 
@@ -17,6 +19,7 @@ namespace MultiplayerTools.Patches
     {
         private const int HostConnectionId = 32767;
         private const int PrivateReplySystemMessageType = 0;
+        private const string MotdCommand = "!motd";
         private const string HideSystemMessageSuffixTag = "<size=0>";
 
         private delegate void ChatCommandHandler(PlayerControl playerControl, string args);
@@ -45,6 +48,8 @@ namespace MultiplayerTools.Patches
         }
 
         private static readonly Dictionary<int, (string Message, int Frame)> LastCommandBySource = new();
+        private static readonly HashSet<int> MotdRecipients = new();
+        private static readonly Dictionary<int, int> TeleportRequests = new();
 
         private static readonly Dictionary<string, CommandDefinition> Commands = new(StringComparer.OrdinalIgnoreCase)
         {
@@ -53,15 +58,37 @@ namespace MultiplayerTools.Patches
                 "!help [command]",
                 "Shows available commands or details for one command.",
                 hiddenFromHelp: true),
+            [MotdCommand] = new CommandDefinition(
+                HandleMotdCommand,
+                "!motd [message]",
+                "Shows the message of the day. Host can pass a message to set it."),
             ["!bc"] = new CommandDefinition(
                 HandleBangCommandsCommand,
                 "!bc <on|off>",
                 "Enable or disable guest bang commands.",
                 hostCommand: true),
+            ["!settings"] = new CommandDefinition(
+                SettingsCommand.HandleCommand,
+                "!settings",
+                "Open MultiplayerTools settings.",
+                hostCommand: true),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
                 "!tp <name>",
-                "Teleport to a player by name.")
+                "Teleport to a player by name."),
+            ["!tpme"] = new CommandDefinition(
+                HandleTpMeCommand,
+                "!tpme <name>",
+                "Ask a player to Teleport to you."),
+            ["!tpa"] = new CommandDefinition(
+                HandleTpAcceptCommand,
+                "!tpa",
+                "Accept a Teleport request."),
+            ["!tpf"] = new CommandDefinition(
+                HandleTpForceCommand,
+                "!tpf <name>",
+                "Force a player to Teleport to you.",
+                hostCommand: true)
         };
 
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
@@ -86,7 +113,7 @@ namespace MultiplayerTools.Patches
 
             bool handledCommand = TryHandleCommand(message, localPlayer.ConnectionID, isHostLocal: true);
             if (!handledCommand)
-                BroadcastMessage(0, message, localPlayer.Username, showAboveUser: localPlayer.ConnectionID);
+                BroadcastMessage(0, message, AutoCloseTmpRichText(localPlayer.Username), showAboveUser: localPlayer.ConnectionID);
 
             chatBox.inputFieldValue = string.Empty;
             chatBox.ClearInputBox();
@@ -146,7 +173,48 @@ namespace MultiplayerTools.Patches
                 return;
             }
 
-            serverManager.Broadcast(connection, CreatePrivateReplyMessage(text), true);
+            serverManager.Broadcast(connection, CreateSystemChatMessage(text), true);
+        }
+
+        public static void BroadcastSystemMessage(string text)
+        {
+            var serverManager = InstanceFinder.ServerManager;
+            if (serverManager == null)
+            {
+                Debug.LogError("[ChatSystem] Cannot send system chat message: server manager is unavailable.");
+                return;
+            }
+
+            serverManager.Broadcast(CreateSystemChatMessage(text), true);
+        }
+
+        public static void SendMotdToPlayer(PlayerReference player)
+        {
+            if (!MultiplayerToolsCore.isHost || player == null)
+                return;
+
+            int connectionId = player.ConnectionID;
+            string motd = MultiplayerToolsCore.MessageOfTheDay;
+            if (string.IsNullOrWhiteSpace(motd) || !MotdRecipients.Add(connectionId))
+                return;
+
+            MelonCoroutines.Start(SendMotdWhenReady(connectionId));
+        }
+
+        public static void ForgetMotdRecipient(int connectionId)
+        {
+            MotdRecipients.Remove(connectionId);
+        }
+
+        public static void ForgetTeleportRequests(int connectionId)
+        {
+            TeleportRequests.Remove(connectionId);
+
+            foreach (int targetConnectionId in new List<int>(TeleportRequests.Keys))
+            {
+                if (TeleportRequests[targetConnectionId] == connectionId)
+                    TeleportRequests.Remove(targetConnectionId);
+            }
         }
 
         private static bool TryHandleCommand(string message, int connectionId, bool isHostLocal)
@@ -156,6 +224,12 @@ namespace MultiplayerTools.Patches
                 return false;
 
             bool isHost = connectionId == HostConnectionId;
+            string args = parts.Length > 1 ? parts[1].Trim() : string.Empty;
+            bool isMotdCommand = parts[0].Equals(MotdCommand, StringComparison.OrdinalIgnoreCase);
+
+            if (isMotdCommand && !HasMotd() && (string.IsNullOrWhiteSpace(args) || !isHost))
+                return true;
+
             if (!MultiplayerToolsCore.EnableGuestBangCommands && !isHost)
             {
                 BroadcastMessage(connectionId, "<#FA0>Commands are disabled on this server.");
@@ -177,7 +251,6 @@ namespace MultiplayerTools.Patches
 
             try
             {
-                string args = parts.Length > 1 ? parts[1].Trim() : string.Empty;
                 command.Handler(playerControl, args);
             }
             catch (Exception ex)
@@ -187,6 +260,33 @@ namespace MultiplayerTools.Patches
             }
 
             return true;
+        }
+
+        private static IEnumerator SendMotdWhenReady(int connectionId)
+        {
+            for (int frame = 0; frame < 60; frame++)
+            {
+                var serverManager = InstanceFinder.ServerManager;
+                if (serverManager != null &&
+                    serverManager.Clients != null &&
+                    serverManager.Clients.TryGetValue(connectionId, out _))
+                {
+                    string motd = MultiplayerToolsCore.MessageOfTheDay;
+                    if (string.IsNullOrWhiteSpace(motd))
+                    {
+                        MotdRecipients.Remove(connectionId);
+                        yield break;
+                    }
+
+                    BroadcastMessage(connectionId, motd);
+                    yield break;
+                }
+
+                yield return null;
+            }
+
+            MotdRecipients.Remove(connectionId);
+            Debug.LogWarning($"[ChatSystem] MOTD was not sent: client {connectionId} was not ready.");
         }
 
         private static ChatMessage CreatePublicChatMessage(string text, string username, int showAboveUser)
@@ -204,6 +304,9 @@ namespace MultiplayerTools.Patches
 
         public static string AutoCloseTmpRichText(string text)
         {
+            if (string.IsNullOrEmpty(text))
+                return string.Empty;
+
             var tagRegex = new Regex(@"<(/?)([a-zA-Z#][a-zA-Z0-9#-]*)(?:=[^>]*)?>");
             var openTags = new Stack<string>();
             var selfClosing = new HashSet<string> { "br", "space", "sprite", "page" };
@@ -243,14 +346,14 @@ namespace MultiplayerTools.Patches
                 ? player.Username
                 : fallbackUsername;
 
-            BroadcastMessage(0, text, username, showAboveUser: connectionId);
+            BroadcastMessage(0, text, AutoCloseTmpRichText(username), showAboveUser: connectionId);
         }
 
-        private static ChatMessage CreatePrivateReplyMessage(string text)
+        private static ChatMessage CreateSystemChatMessage(string text)
         {
             return new ChatMessage
             {
-                Username = text + HideSystemMessageSuffixTag,
+                Username = AutoCloseTmpRichText(text) + HideSystemMessageSuffixTag,
                 UserProductId = string.Empty,
                 Message = string.Empty,
                 MessageType = ChatMessageType.System,
@@ -332,7 +435,7 @@ namespace MultiplayerTools.Patches
                 if (!requested.StartsWith("!", StringComparison.Ordinal))
                     requested = "!" + requested;
 
-                if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(command, playerControl))
+                if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(requested, command, playerControl))
                     Reply(playerControl, $"<#7FF>{FormatCommandUsage(command)} - {command.Description}");
                 else
                     Reply(playerControl, $"<#FA0>Unknown command: {requested}");
@@ -341,16 +444,23 @@ namespace MultiplayerTools.Patches
             }
 
             Reply(playerControl, "<#7FF>Available commands:");
-            foreach (CommandDefinition command in Commands.Values)
+            foreach (var entry in Commands)
             {
-                if (CanShowInHelp(command, playerControl))
-                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(command)}");
+                if (CanShowInHelp(entry.Key, entry.Value, playerControl))
+                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(entry.Value)}");
             }
         }
 
-        private static bool CanShowInHelp(CommandDefinition command, PlayerControl playerControl)
+        private static bool CanShowInHelp(string commandName, CommandDefinition command, PlayerControl playerControl)
         {
-            return !command.HiddenFromHelp && CanUseCommand(command, playerControl);
+            return !command.HiddenFromHelp &&
+                   (!commandName.Equals(MotdCommand, StringComparison.OrdinalIgnoreCase) || HasMotd()) &&
+                   CanUseCommand(command, playerControl);
+        }
+
+        private static bool HasMotd()
+        {
+            return !string.IsNullOrWhiteSpace(MultiplayerToolsCore.MessageOfTheDay);
         }
 
         private static bool CanUseCommand(CommandDefinition command, PlayerControl playerControl)
@@ -390,6 +500,18 @@ namespace MultiplayerTools.Patches
             Reply(playerControl, $"<#FF0>Guest bang commands {(enabled.Value ? "enabled" : "disabled")}.");
         }
 
+        private static void HandleMotdCommand(PlayerControl playerControl, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args) || playerControl.OwnerId != HostConnectionId)
+            {
+                Reply(playerControl, $"<#7FF>MOTD: </color>{MultiplayerToolsCore.MessageOfTheDay}");
+                return;
+            }
+
+            MultiplayerToolsCore.SetMessageOfTheDay(args.Trim());
+            Reply(playerControl, $"<#FF0>MOTD set: </color>{MultiplayerToolsCore.MessageOfTheDay}");
+        }
+
         private static void HandleTpCommand(PlayerControl playerControl, string args)
         {
             if (string.IsNullOrWhiteSpace(args))
@@ -406,16 +528,112 @@ namespace MultiplayerTools.Patches
                 return;
             }
 
+            string targetUsername = AutoCloseTmpRichText(target.Username);
             if (target.PlayerControl == null)
             {
-                Reply(playerControl, $"<#FA0>Player is not ready: {target.Username}");
                 return;
             }
 
-            playerControl.RpcWriter___RpcResetPosition___3848837105(
-                target.PlayerControl.transform.position,
-                target.PlayerControl.transform.rotation);
-            Reply(playerControl, $"<#FF0>Tp'd to {target.Username}");
+            TeleportPlayerTo(playerControl, target.PlayerControl);
+            Reply(playerControl, $"<#FF0>TP'd to {targetUsername}");
+        }
+
+        private static void HandleTpMeCommand(PlayerControl playerControl, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                Reply(playerControl, "<#F00>Usage: !tpme <name>");
+                return;
+            }
+
+            PlayerReference requester = Utils.FindPlayerFromConnectionId(playerControl.OwnerId);
+            if (requester == null)
+            {
+                Reply(playerControl, "<#F00>Command failed: player is not ready.");
+                return;
+            }
+
+            PlayerReference target = Utils.FindPlayerByName(args.Trim(), sanitized: true);
+            if (target == null)
+            {
+                Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}");
+                return;
+            }
+
+            if (target.ConnectionID == requester.ConnectionID)
+            {
+                Reply(playerControl, "<#FA0>You cannot request yourself.");
+                return;
+            }
+
+            string requesterUsername = AutoCloseTmpRichText(requester.Username);
+            string targetUsername = AutoCloseTmpRichText(target.Username);
+            TeleportRequests[target.ConnectionID] = requester.ConnectionID;
+            BroadcastMessage(target.ConnectionID, $"<#7FF>{requesterUsername} wants you to TP to them. Type !tpa to accept.");
+            Reply(playerControl, $"<#FF0>TP request sent to {targetUsername}.");
+        }
+
+        private static void HandleTpAcceptCommand(PlayerControl playerControl, string args)
+        {
+            int targetConnectionId = playerControl.OwnerId;
+            if (!TeleportRequests.TryGetValue(targetConnectionId, out int requesterConnectionId))
+            {
+                Reply(playerControl, "<#FA0>You have no pending TP request.");
+                return;
+            }
+
+            TeleportRequests.Remove(targetConnectionId);
+
+            PlayerReference requester = Utils.FindPlayerFromConnectionId(requesterConnectionId);
+            if (requester?.PlayerControl == null)
+            {
+                return;
+            }
+
+            string requesterUsername = AutoCloseTmpRichText(requester.Username);
+            TeleportPlayerTo(playerControl, requester.PlayerControl);
+            Reply(playerControl, $"<#FF0>TP'd to {requesterUsername}.");
+            string accepterName = AutoCloseTmpRichText(Utils.FindPlayerFromConnectionId(targetConnectionId)?.Username ?? "A player");
+            BroadcastMessage(requester.ConnectionID, $"<#FF0>{accepterName} accepted your TP request.");
+        }
+
+        private static void HandleTpForceCommand(PlayerControl playerControl, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                Reply(playerControl, "<#F00>Usage: !tpf <name>");
+                return;
+            }
+
+            PlayerReference target = Utils.FindPlayerByName(args.Trim(), sanitized: true);
+            if (target == null)
+            {
+                Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}");
+                return;
+            }
+
+            string targetUsername = AutoCloseTmpRichText(target.Username);
+            if (target.PlayerControl == null)
+            {
+                return;
+            }
+
+            if (target.ConnectionID == playerControl.OwnerId)
+            {
+                Reply(playerControl, "<#FA0>You cannot force TP yourself.");
+                return;
+            }
+
+            TeleportPlayerTo(target.PlayerControl, playerControl);
+            Reply(playerControl, $"<#FF0>Forced {targetUsername} to TP to you.");
+            BroadcastMessage(target.ConnectionID, $"<#FF0>The host TP'd you to them.");
+        }
+
+        private static void TeleportPlayerTo(PlayerControl player, PlayerControl destination)
+        {
+            player.RpcWriter___RpcResetPosition___3848837105(
+                destination.transform.position,
+                destination.transform.rotation);
         }
 
         private static void Reply(PlayerControl playerControl, string message)

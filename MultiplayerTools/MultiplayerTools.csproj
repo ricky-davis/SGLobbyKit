@@ -617,6 +617,8 @@
 	<ItemGroup>
     <Compile Include="MultiplayerToolsCore.cs" />
     <Compile Include="LobbyPatchFeatures.cs" />
+    <Compile Include="SettingsCommand.cs" />
+    <Compile Include="UILib.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
 		<Content Include="Directory.Build.props" />
