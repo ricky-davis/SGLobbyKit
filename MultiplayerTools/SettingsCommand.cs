@@ -23,6 +23,7 @@ namespace MultiplayerTools.Patches
         private const float RowSpacing = 8f;
         private const float VerticalRowSpacing = RowSpacing + 5f;
         private const int ScrollBottomPadding = 48;
+        private const float ScrollWheelSensitivity = 35f;
         private const float TitleFontSize = 24f;
         private const float LabelFontSize = 16f;
         private const float InputFontSize = 16f;
@@ -73,6 +74,9 @@ namespace MultiplayerTools.Patches
             AddHeader(panel.Transform, "MultiplayerTools Settings", addCloseButton: true);
             // Create a scrollable content area for the settings
             var scroll = UILib.CreateScrollViewport(panel.Transform, "Scroll Viewport");
+            if (scroll.ScrollRect != null)
+                scroll.ScrollRect.scrollSensitivity = ScrollWheelSensitivity;
+
             Transform content = scroll.ContentRect != null ? scroll.ContentRect.transform : panel.Transform;
             VerticalLayoutGroup contentLayout = content.GetComponent<VerticalLayoutGroup>();
             if (contentLayout != null)
