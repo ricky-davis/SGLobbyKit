@@ -349,24 +349,27 @@ namespace MultiplayerTools
 
         public static void CaptureSceneDefaults(bool overwriteExisting = false)
         {
-            GameObject createLobby = FindNamedObject("UI_CreateLobby");
+            GameObject createLobby = FindNamedObject(SleddingUiPaths.CreateLobbyRoot);
             if (createLobby != null)
             {
                 CaptureCreateLobbyDefaults(createLobby.transform, overwriteExisting);
                 CaptureDefaultsFrom(createLobby.transform, overwriteExisting);
             }
 
-            Button hostButton = FindNamedComponent<Button>("(Button) HOST", "(Button) Join", "(Button) JOIN");
+            Button hostButton = FindNamedComponent<Button>(
+                SleddingUiPaths.HostButton,
+                SleddingUiPaths.JoinButton,
+                SleddingUiPaths.JoinButtonUpper);
             if (hostButton != null)
                 SetDefault(hostButton, overwriteExisting);
 
             TMP_Text settingsHeader = FindNamedComponent<TMP_Text>(
-                "(Text) quick changes",
-                "(Text) SECTION TITLE",
-                "(Text) chat related section");
+                SleddingUiPaths.SettingsHeaderQuickChanges,
+                SleddingUiPaths.SettingsHeaderSectionTitle,
+                SleddingUiPaths.SettingsHeaderChatRelated);
             Defaults.HeaderLabel = PickDefault(Defaults.HeaderLabel, settingsHeader, overwriteExisting);
 
-            GameObject mainMenuPanel = FindNamedObject("UI_MainMenu")?.transform.Find("Panel")?.gameObject;
+            GameObject mainMenuPanel = FindNamedObject(SleddingUiPaths.MainMenuRoot)?.transform.Find(SleddingUiPaths.MainMenuPanel)?.gameObject;
             if (mainMenuPanel != null)
                 CaptureDefaultsFrom(mainMenuPanel.transform, overwriteExisting);
         }
@@ -1820,17 +1823,17 @@ namespace MultiplayerTools
             if (root == null)
                 return;
 
-            Image background = root.Find("Panels/Lobby Settings (mini)/(Image) Background")?.GetComponent<Image>();
-            Button button = root.Find("Panels/Lobby Settings (mini)/(Button) CONFIRM HOST")?.GetComponent<Button>()
-                ?? root.Find("Panels/Lobby Settings (mini)/ButtonContainer/(Button) Close Menu")?.GetComponent<Button>();
-            TMP_InputField input = root.Find("Panels/Lobby Settings (mini)/CustomLobbyNameInput")?.GetComponent<TMP_InputField>()
-                ?? root.Find("Panels/Lobby Settings (mini)/password toggles/(Input) lobby setting password")?.GetComponent<TMP_InputField>();
-            Toggle toggle = root.Find("Panels/Lobby Settings (mini)/lobby type toggles/(Toggle) Game Type public/private")?.GetComponent<Toggle>()
-                ?? root.Find("Panels/Lobby Settings (mini)/password toggles/(Toggle) uses password")?.GetComponent<Toggle>();
-            MySliderUI slider = root.Find("Panels/Lobby Settings (mini)/(Slider) player count slider")?.GetComponent<MySliderUI>();
+            Image background = root.Find(SleddingUiPaths.LobbySettingsPanelBackground)?.GetComponent<Image>();
+            Button button = root.Find(SleddingUiPaths.LobbyConfirmHostButton)?.GetComponent<Button>()
+                ?? root.Find(SleddingUiPaths.LobbyCloseButton)?.GetComponent<Button>();
+            TMP_InputField input = root.Find(SleddingUiPaths.CustomLobbyNameInput)?.GetComponent<TMP_InputField>()
+                ?? root.Find(SleddingUiPaths.LobbyPasswordInput)?.GetComponent<TMP_InputField>();
+            Toggle toggle = root.Find(SleddingUiPaths.LobbyPublicPrivateToggle)?.GetComponent<Toggle>()
+                ?? root.Find(SleddingUiPaths.LobbyPasswordToggle)?.GetComponent<Toggle>();
+            MySliderUI slider = root.Find(SleddingUiPaths.LobbyPlayerCountSlider)?.GetComponent<MySliderUI>();
             Scrollbar scrollbar = root.GetComponentInChildren<Scrollbar>(true);
-            TMP_Text label = root.Find("Panels/Lobby Settings (mini)/(Text) Settings Text")?.GetComponent<TMP_Text>()
-                ?? root.Find("Panels/Lobby Settings (mini)/(Text) Lobby Settings")?.GetComponent<TMP_Text>()
+            TMP_Text label = root.Find(SleddingUiPaths.LobbySettingsText)?.GetComponent<TMP_Text>()
+                ?? root.Find(SleddingUiPaths.LobbySettingsTitleText)?.GetComponent<TMP_Text>()
                 ?? button?.GetComponentInChildren<TMP_Text>(true)
                 ?? toggle?.GetComponentInChildren<TMP_Text>(true);
             TMP_Text inputText = input != null ? input.textComponent : null;
@@ -1939,18 +1942,18 @@ namespace MultiplayerTools
 
         private static Image FindLobbyPanelBackground()
         {
-            Transform lobbyBackground = FindNamedObject("UI_CreateLobby")?.transform.Find("Panels/Lobby Settings (mini)/(Image) Background");
+            Transform lobbyBackground = FindNamedObject(SleddingUiPaths.CreateLobbyRoot)?.transform.Find(SleddingUiPaths.LobbySettingsPanelBackground);
             Image image = lobbyBackground != null ? lobbyBackground.GetComponent<Image>() : null;
             if (image != null)
                 return image;
 
             foreach (GameObject gameObject in Resources.FindObjectsOfTypeAll<GameObject>())
             {
-                if (gameObject == null || gameObject.name != "(Image) Background")
+                if (gameObject == null || gameObject.name != SleddingUiPaths.BackgroundImageName)
                     continue;
 
                 image = gameObject.GetComponent<Image>();
-                if (image != null && HasAncestor(gameObject.transform, "Lobby Settings"))
+                if (image != null && HasAncestor(gameObject.transform, SleddingUiPaths.LobbySettingsAncestorName))
                     return image;
             }
 

@@ -42,7 +42,7 @@ namespace MultiplayerTools.Patches
         private static void Show()
         {
             CloseSettings();
-            UILib.CaptureSceneDefaults(overwriteExisting: false);
+            SleddingUiAdapter.CaptureSceneTemplates(overwriteExisting: false);
             ForceCloseChat();
             UiReferenceController.Instance?.CloseAllOpenMenus(false);
 
@@ -61,7 +61,7 @@ namespace MultiplayerTools.Patches
             canvasGroup.interactable = true;
             canvasGroup.blocksRaycasts = true;
 
-            Image fadeTemplate = UILib.Find("UI_BackgroundFade").Get<Image>();
+            Image fadeTemplate = UILib.Find(SleddingUiPaths.BackgroundFade).Get<Image>();
             Image backdrop = UILib.CreateScreenBackdrop(_root.transform, template: fadeTemplate);
 
             UILib.Element panel = UILib.CreatePanel(backdrop != null ? backdrop.transform : _root.transform, "Panel");

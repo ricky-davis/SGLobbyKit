@@ -117,8 +117,8 @@ namespace MultiplayerTools.Patches
             if (searchRoot == null)
                 return;
 
-            HideButton(searchRoot.Find("Panels/Lobby Settings (mini)/ButtonContainer/(Button) Close Menu")?.GetComponent<Button>());
-            HideButton(searchRoot.Find("ButtonContainer/(Button) Close Menu")?.GetComponent<Button>());
+            HideButton(searchRoot.Find(SleddingUiPaths.LobbyCloseButton)?.GetComponent<Button>());
+            HideButton(searchRoot.Find(SleddingUiPaths.LobbyRootCloseButton)?.GetComponent<Button>());
 
             foreach (Button button in searchRoot.GetComponentsInChildren<Button>(true))
             {
@@ -275,7 +275,7 @@ namespace MultiplayerTools.Patches
                 if (createLobby == null)
                     return;
 
-                UILib.CaptureDefaultsFrom(createLobby.transform, overwriteExisting: false);
+                SleddingUiAdapter.CaptureTemplatesFrom(createLobby.transform, overwriteExisting: false);
                 EnsureLobbyNameInput(createLobby);
                 EnsureMaxPlayerSlider(createLobby);
                 HideCreateLobbyCloseButton(createLobby);
@@ -300,11 +300,11 @@ namespace MultiplayerTools.Patches
             try
             {
                 Transform menuPanel = ConfigureMainMenu(__instance);
-                UILib.CaptureDefaultsFrom(menuPanel, overwriteExisting: false);
+                SleddingUiAdapter.CaptureTemplatesFrom(menuPanel, overwriteExisting: false);
                 Transform createLobbyRoot = FindCreateLobbyRoot(menuPanel);
                 if (createLobbyRoot == null)
                 {
-                    Debug.LogWarning("[MultiplayerTools] Could not embed create lobby UI: UI_CreateLobby root was not found.");
+                    Debug.LogWarning($"[MultiplayerTools] Could not embed create lobby UI: {SleddingUiPaths.CreateLobbyRoot} root was not found.");
                     return;
                 }
 
@@ -340,7 +340,7 @@ namespace MultiplayerTools.Patches
 
             UILib.Assume(mainMenu.hostButton).Hide();
 
-            Button joinButton = mainMenu.joinButton ?? GameObject.Find("(Button) JOIN")?.GetComponent<Button>();
+            Button joinButton = mainMenu.joinButton ?? GameObject.Find(SleddingUiPaths.JoinButtonUpper)?.GetComponent<Button>();
             if (joinButton != null)
             {
                 UILib.Assume(joinButton)
@@ -349,7 +349,7 @@ namespace MultiplayerTools.Patches
                     .Layout(flexibleWidth: 1f, preferredWidth: -1f);
             }
 
-            Button quitButton = mainMenu.quitButton ?? GameObject.Find("(Button) Quit")?.GetComponent<Button>();
+            Button quitButton = mainMenu.quitButton ?? GameObject.Find(SleddingUiPaths.QuitButton)?.GetComponent<Button>();
             UILib.SetButtonColors(quitButton, new Color(0.867f, 0.298f, 0.298f, 1f), new Color(0.298f, 0f, 0f, 1f));
 
             HorizontalLayoutGroup hostRowLayout = hostRow.GetComponent<HorizontalLayoutGroup>();
@@ -370,11 +370,11 @@ namespace MultiplayerTools.Patches
         {
             for (Transform current = mainMenuRoot; current != null; current = current.parent)
             {
-                if (current.name == "UI_CreateLobby")
+                if (current.name == SleddingUiPaths.CreateLobbyRoot)
                     return current;
             }
 
-            Transform root = mainMenuRoot?.Find("UI_CreateLobby");
+            Transform root = mainMenuRoot?.Find(SleddingUiPaths.CreateLobbyRoot);
             if (root != null)
                 return root;
 
@@ -389,15 +389,15 @@ namespace MultiplayerTools.Patches
                 return null;
 
             UILib.Assume(createLobbyRoot).Show();
-            UILib.SetChildrenActive(createLobbyRoot, true, skipNameContains: "BackgroundFade");
+            UILib.SetChildrenActive(createLobbyRoot, true, skipNameContains: SleddingUiPaths.BackgroundFadeNameContains);
             for (int i = 0; i < createLobbyRoot.childCount; i++)
             {
                 Transform child = createLobbyRoot.GetChild(i);
-                if (child == null || child.name.Contains("BackgroundFade"))
+                if (child == null || child.name.Contains(SleddingUiPaths.BackgroundFadeNameContains))
                     continue;
 
-                if (child.name.Contains("Panels"))
-                    UILib.SetChildrenActive(child, true, skipNameContains: "Editor");
+                if (child.name.Contains(SleddingUiPaths.PanelsNameContains))
+                    UILib.SetChildrenActive(child, true, skipNameContains: SleddingUiPaths.EditorNameContains);
             }
 
             UICreateLobby createLobby = createLobbyRoot.GetComponent<UICreateLobby>()
