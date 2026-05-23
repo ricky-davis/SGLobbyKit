@@ -623,6 +623,9 @@
     <Compile Include="UI/SleddingUiPaths.cs" />
     <Compile Include="Features/Settings/SettingsDraft.cs" />
     <Compile Include="Features/Settings/SettingsSchema.cs" />
+    <Compile Include="Features/Settings/SettingsMenuHandle.cs" />
+    <Compile Include="Features/Settings/SettingsMenuController.cs" />
+    <Compile Include="Features/Settings/SettingsMenuView.cs" />
     <Compile Include="Features/Lobby/LobbyUiController.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
