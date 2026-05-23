@@ -110,6 +110,37 @@ namespace MultiplayerTools.Patches
             }));
         }
 
+        private static void HideCreateLobbyCloseButton(UICreateLobby createLobby)
+        {
+            Transform createLobbyRoot = FindCreateLobbyRoot(createLobby?.transform);
+            Transform searchRoot = createLobbyRoot ?? createLobby?.transform;
+            if (searchRoot == null)
+                return;
+
+            HideButton(searchRoot.Find("Panels/Lobby Settings (mini)/ButtonContainer/(Button) Close Menu")?.GetComponent<Button>());
+            HideButton(searchRoot.Find("ButtonContainer/(Button) Close Menu")?.GetComponent<Button>());
+
+            foreach (Button button in searchRoot.GetComponentsInChildren<Button>(true))
+            {
+                if (button == null)
+                    continue;
+
+                TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+                string labelText = label != null ? label.text : string.Empty;
+                if (button.name.Contains("Close Menu") || button.name.Contains("Close") || labelText == "X" || labelText == "×")
+                    HideButton(button);
+            }
+        }
+
+        private static void HideButton(Button button)
+        {
+            if (button == null)
+                return;
+
+            button.interactable = false;
+            button.gameObject.SetActive(false);
+        }
+
         private static void EnsureLobbyOptionBindings(UICreateLobby createLobby)
         {
             Toggle textChatOnlyToggle = createLobby.textChatOnlyToggle;
@@ -247,6 +278,7 @@ namespace MultiplayerTools.Patches
                 UILib.CaptureDefaultsFrom(createLobby.transform, overwriteExisting: false);
                 EnsureLobbyNameInput(createLobby);
                 EnsureMaxPlayerSlider(createLobby);
+                HideCreateLobbyCloseButton(createLobby);
                 EnsureLobbyOptionBindings(createLobby);
             }
 
@@ -336,6 +368,12 @@ namespace MultiplayerTools.Patches
 
         private static Transform FindCreateLobbyRoot(Transform mainMenuRoot)
         {
+            for (Transform current = mainMenuRoot; current != null; current = current.parent)
+            {
+                if (current.name == "UI_CreateLobby")
+                    return current;
+            }
+
             Transform root = mainMenuRoot?.Find("UI_CreateLobby");
             if (root != null)
                 return root;
