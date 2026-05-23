@@ -728,6 +728,93 @@ namespace MultiplayerTools
             return scrollbar;
         }
 
+        public sealed class ScrollViewportResult
+        {
+            public GameObject Root;
+            public RectTransform ViewportRect;
+            public RectTransform ContentRect;
+            public ScrollRect ScrollRect;
+            public Scrollbar Scrollbar;
+        }
+
+        public static ScrollViewportResult CreateScrollViewport(
+            Transform parent,
+            string name = "Scroll Viewport",
+            Vector2? sizeDelta = null,
+            Scrollbar scrollbarTemplate = null)
+        {
+            const float scrollbarInset = 24f;
+            const float scrollbarWidth = 18f;
+            const float contentRightPadding = 16f;
+
+            Element root = Create(name, parent);
+            GameObject rootGo = root.GameObject;
+            if (sizeDelta.HasValue)
+                SetRect(EnsureRectTransform(rootGo), sizeDelta: sizeDelta);
+
+            SetLayout(rootGo, flexibleHeight: 1f, flexibleWidth: 1f);
+
+            ScrollRect scrollRect = rootGo.GetComponent<ScrollRect>() ?? rootGo.AddComponent<ScrollRect>();
+            Image viewportImage = CreateBackground(rootGo.transform, "Viewport Background", template: Defaults.Background ?? (Defaults.Panel != null ? Defaults.Panel.GetComponent<Image>() : null));
+            RectTransform viewportRect = EnsureRectTransform(viewportImage.gameObject);
+            viewportRect.anchorMin = new Vector2(0f, 0f);
+            viewportRect.anchorMax = new Vector2(1f, 1f);
+            viewportRect.offsetMin = Vector2.zero;
+            viewportRect.offsetMax = new Vector2(-(scrollbarInset + scrollbarWidth), 0f);
+
+            // Content object
+            GameObject content = new GameObject("Content");
+            content.transform.SetParent(viewportRect, false);
+            RectTransform contentRect = EnsureRectTransform(content);
+            contentRect.anchorMin = new Vector2(0f, 1f);
+            contentRect.anchorMax = new Vector2(1f, 1f);
+            contentRect.pivot = new Vector2(0.5f, 1f);
+            contentRect.anchoredPosition = Vector2.zero;
+            contentRect.sizeDelta = new Vector2(0f, 0f);
+
+            SetVerticalLayout(content, new RectOffset(0, (int)contentRightPadding, 0, 0), spacing: 8f);
+            ContentSizeFitter fitter = content.AddComponent<ContentSizeFitter>();
+            fitter.verticalFit = ContentSizeFitter.FitMode.PreferredSize;
+
+            // Configure scroll rect
+            scrollRect.content = contentRect;
+            scrollRect.viewport = viewportRect;
+            scrollRect.horizontal = false;
+            scrollRect.vertical = true;
+            scrollRect.movementType = ScrollRect.MovementType.Clamped;
+
+            Scrollbar scrollbar = null;
+            scrollbarTemplate ??= Defaults.Scrollbar;
+            if (scrollbarTemplate != null)
+            {
+                scrollbar = CreateScrollbar(rootGo.transform, "Scrollbar", template: scrollbarTemplate);
+                if (scrollbar != null)
+                {
+                    RectTransform sbRect = EnsureRectTransform(scrollbar.gameObject);
+                    sbRect.anchorMin = new Vector2(1f, 0f);
+                    sbRect.anchorMax = new Vector2(1f, 1f);
+                    sbRect.pivot = new Vector2(1f, 0.5f);
+                    sbRect.anchoredPosition = new Vector2(-scrollbarInset, 0f);
+                    sbRect.sizeDelta = new Vector2(scrollbarWidth, 0f);
+
+                    scrollRect.verticalScrollbar = scrollbar;
+                    scrollRect.verticalScrollbarVisibility = ScrollRect.ScrollbarVisibility.Permanent;
+                }
+            }
+
+            Mask mask = viewportImage.gameObject.GetComponent<Mask>() ?? viewportImage.gameObject.AddComponent<Mask>();
+            mask.showMaskGraphic = false;
+
+            return new ScrollViewportResult
+            {
+                Root = rootGo,
+                ViewportRect = viewportRect,
+                ContentRect = contentRect,
+                ScrollRect = scrollRect,
+                Scrollbar = scrollbar
+            };
+        }
+
         public static Element CreatePanel(
             Transform parent,
             string name = "Panel",
@@ -992,6 +1079,144 @@ namespace MultiplayerTools
             SetHorizontalLayout(row.GameObject, spacing);
             SetFixedLayoutSize(row.GameObject, preferredHeight: height);
             return row;
+        }
+
+        public static Element CreateFlexRow(
+            Transform parent,
+            string name = "Row",
+            float height = 38f,
+            float spacing = 14f,
+            RectOffset padding = null)
+        {
+            Element row = Create(name, parent);
+            SetHorizontalLayout(
+                row.GameObject,
+                spacing,
+                padding,
+                childControlWidth: false,
+                childControlHeight: true,
+                childForceExpandWidth: false,
+                childForceExpandHeight: false);
+            SetFixedLayoutSize(row.GameObject, preferredHeight: height);
+            return row;
+        }
+
+        public sealed class GridTrackRow
+        {
+            public GridTrackRow(GameObject gameObject, RectTransform[] tracks)
+            {
+                GameObject = gameObject;
+                Tracks = tracks;
+            }
+
+            public GameObject GameObject { get; }
+            public RectTransform[] Tracks { get; }
+        }
+
+        public static GridTrackRow CreateGridTrackRow(
+            Transform parent,
+            string name = "Row",
+            float height = 38f,
+            float spacing = 14f,
+            RectOffset padding = null,
+            params float[] trackWidths)
+        {
+            Element row = Create(name, parent);
+            RectTransform rowRect = EnsureRectTransform(row.GameObject);
+            SetFixedLayoutSize(row.GameObject, preferredHeight: height);
+
+            if (trackWidths == null || trackWidths.Length == 0)
+                trackWidths = new[] { 0f, 0f, 1f };
+
+            RectTransform[] tracks = new RectTransform[trackWidths.Length];
+            float x = padding != null ? padding.left : 0f;
+            float availableWidth = 1f;
+            float totalFixedWidth = 0f;
+            float totalFlexible = 0f;
+            float spacingTotal = spacing * Math.Max(0, trackWidths.Length - 1);
+
+            for (int i = 0; i < trackWidths.Length; i++)
+            {
+                if (trackWidths[i] > 0f)
+                    totalFlexible += trackWidths[i];
+            }
+
+            for (int i = 0; i < trackWidths.Length; i++)
+            {
+                GameObject cell = Create($"{name} Track {i}", row.GameObject.transform).GameObject;
+                RectTransform cellRect = EnsureRectTransform(cell);
+                cellRect.anchorMin = new Vector2(0f, 0.5f);
+                cellRect.anchorMax = new Vector2(0f, 0.5f);
+                cellRect.pivot = new Vector2(0f, 0.5f);
+                cellRect.anchoredPosition = Vector2.zero;
+                cellRect.sizeDelta = new Vector2(0f, height);
+
+                float width = trackWidths[i];
+                if (width > 0f && totalFlexible > 0f)
+                {
+                    width = Mathf.Max(0f, width);
+                }
+                else if (width <= 0f)
+                {
+                    width = 0f;
+                }
+
+                tracks[i] = cellRect;
+            }
+
+            GridTrackRow grid = new GridTrackRow(row.GameObject, tracks);
+            LayoutGridTracks(grid, spacing, padding, trackWidths);
+            return grid;
+        }
+
+        public static void LayoutGridTracks(GridTrackRow gridRow, float spacing = 14f, RectOffset padding = null, params float[] trackWidths)
+        {
+            if (gridRow == null || gridRow.Tracks == null || gridRow.Tracks.Length == 0)
+                return;
+
+            RectTransform rowRect = gridRow.GameObject != null ? gridRow.GameObject.GetComponent<RectTransform>() : null;
+            if (rowRect == null)
+                return;
+
+            float leftPadding = padding != null ? padding.left : 0f;
+            float rightPadding = padding != null ? padding.right : 0f;
+            float rowWidth = rowRect.rect.width > 0f ? rowRect.rect.width : rowRect.sizeDelta.x;
+            if (rowWidth <= 0f && rowRect.parent is RectTransform parentRect)
+                rowWidth = parentRect.rect.width > 0f ? parentRect.rect.width : parentRect.sizeDelta.x;
+            if (rowWidth <= 0f)
+                return;
+
+            if (trackWidths == null || trackWidths.Length != gridRow.Tracks.Length)
+                trackWidths = new float[gridRow.Tracks.Length];
+
+            float fixedWidthTotal = 0f;
+            float flexibleUnits = 0f;
+            for (int i = 0; i < trackWidths.Length; i++)
+            {
+                if (trackWidths[i] > 0f)
+                    flexibleUnits += trackWidths[i];
+                else
+                    fixedWidthTotal += 0f;
+            }
+
+            float remainingWidth = Mathf.Max(0f, rowWidth - leftPadding - rightPadding - spacing * Mathf.Max(0, trackWidths.Length - 1));
+            float unitWidth = flexibleUnits > 0f ? remainingWidth / flexibleUnits : 0f;
+            float cursor = leftPadding;
+
+            for (int i = 0; i < gridRow.Tracks.Length; i++)
+            {
+                RectTransform track = gridRow.Tracks[i];
+                if (track == null)
+                    continue;
+
+                float width = trackWidths[i] > 0f ? trackWidths[i] * unitWidth : 0f;
+                track.anchorMin = new Vector2(0f, 0.5f);
+                track.anchorMax = new Vector2(0f, 0.5f);
+                track.pivot = new Vector2(0f, 0.5f);
+                track.anchoredPosition = new Vector2(cursor, 0f);
+                track.sizeDelta = new Vector2(width, track.sizeDelta.y > 0f ? track.sizeDelta.y : rowRect.rect.height);
+                cursor += width + spacing;
+            }
         }
 
         public static LayoutElement SetFixedLayoutSize(

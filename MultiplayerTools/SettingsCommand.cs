@@ -19,7 +19,10 @@ namespace MultiplayerTools.Patches
         private const float InputHeight = 36f;
         private const float SliderHeight = 30f;
         private const float ToggleHeight = 24.5f;
+        private const float MessageRowHeight = 36f;
         private const float RowSpacing = 8f;
+        private const float VerticalRowSpacing = RowSpacing + 5f;
+        private const int ScrollBottomPadding = 48;
         private const float TitleFontSize = 24f;
         private const float LabelFontSize = 16f;
         private const float InputFontSize = 16f;
@@ -65,22 +68,44 @@ namespace MultiplayerTools.Patches
             UILib.SetVerticalLayout(
                 panel.GameObject,
                 new RectOffset(43, 43, 26, 26),
-                spacing: RowSpacing);
+                spacing: VerticalRowSpacing);
 
             AddHeader(panel.Transform, "MultiplayerTools Settings", addCloseButton: true);
-            AddInput(panel.Transform, "Server Name", MultiplayerToolsCore.ServerName, MultiplayerToolsCore.SetServerName);
-            AddCapacitySlider(panel.Transform);
-            AddToggle(panel.Transform, "Public Lobby", MultiplayerToolsCore.IsPublicLobby, MultiplayerToolsCore.SetIsPublicLobby);
-            AddToggle(panel.Transform, "Password Protected", MultiplayerToolsCore.IsPasswordProtected, MultiplayerToolsCore.SetIsPasswordProtected);
-            AddInput(panel.Transform, "Lobby Password", MultiplayerToolsCore.LobbyPassword, MultiplayerToolsCore.SetLobbyPassword);
-            AddToggle(panel.Transform, "Peaceful Mode", MultiplayerToolsCore.IsPeacefulMode, MultiplayerToolsCore.SetIsPeacefulMode);
-            AddToggle(panel.Transform, "Text Chat Only", MultiplayerToolsCore.IsTextChatOnly, MultiplayerToolsCore.SetIsTextChatOnly);
-            AddDivider(panel.Transform);
-            AddHeader(panel.Transform, "Mod Settings", textScale: 0.7f);
-            AddToggle(panel.Transform, "Guest Bang Commands", MultiplayerToolsCore.EnableGuestBangCommands, MultiplayerToolsCore.SetEnableGuestBangCommands);
-            AddInput(panel.Transform, "Message of the Day", MultiplayerToolsCore.MessageOfTheDay, MultiplayerToolsCore.SetMessageOfTheDay);
-            AddToggle(panel.Transform, "Join Messages", MultiplayerToolsCore.ShowJoinMessages, MultiplayerToolsCore.SetShowJoinMessages);
-            AddToggle(panel.Transform, "Leave Messages", MultiplayerToolsCore.ShowLeaveMessages, MultiplayerToolsCore.SetShowLeaveMessages);
+            // Create a scrollable content area for the settings
+            var scroll = UILib.CreateScrollViewport(panel.Transform, "Scroll Viewport");
+            Transform content = scroll.ContentRect != null ? scroll.ContentRect.transform : panel.Transform;
+            VerticalLayoutGroup contentLayout = content.GetComponent<VerticalLayoutGroup>();
+            if (contentLayout != null)
+            {
+                contentLayout.spacing = VerticalRowSpacing;
+                contentLayout.padding.bottom = ScrollBottomPadding;
+            }
+
+            AddInput(content, "Server Name", MultiplayerToolsCore.ServerName, MultiplayerToolsCore.SetServerName);
+            AddCapacitySlider(content);
+            AddToggle(content, "Public Lobby", MultiplayerToolsCore.IsPublicLobby, MultiplayerToolsCore.SetIsPublicLobby);
+            AddToggle(content, "Password Protected", MultiplayerToolsCore.IsPasswordProtected, MultiplayerToolsCore.SetIsPasswordProtected);
+            AddInput(content, "Lobby Password", MultiplayerToolsCore.LobbyPassword, MultiplayerToolsCore.SetLobbyPassword);
+            AddToggle(content, "Peaceful Mode", MultiplayerToolsCore.IsPeacefulMode, MultiplayerToolsCore.SetIsPeacefulMode);
+            AddToggle(content, "Text Chat Only", MultiplayerToolsCore.IsTextChatOnly, MultiplayerToolsCore.SetIsTextChatOnly);
+            AddDivider(content);
+            AddHeader(content, "Mod Settings", textScale: 0.7f);
+            AddToggle(content, "Guest Bang Commands", MultiplayerToolsCore.EnableGuestBangCommands, MultiplayerToolsCore.SetEnableGuestBangCommands);
+            AddInput(content, "Message of the Day", MultiplayerToolsCore.MessageOfTheDay, MultiplayerToolsCore.SetMessageOfTheDay);
+            AddMessageRow(
+                content,
+                "Join Messages",
+                MultiplayerToolsCore.ShowJoinMessages,
+                MultiplayerToolsCore.SetShowJoinMessages,
+                MultiplayerToolsCore.JoinMessageSize,
+                MultiplayerToolsCore.SetJoinMessageSize);
+            AddMessageRow(
+                content,
+                "Leave Messages",
+                MultiplayerToolsCore.ShowLeaveMessages,
+                MultiplayerToolsCore.SetShowLeaveMessages,
+                MultiplayerToolsCore.LeaveMessageSize,
+                MultiplayerToolsCore.SetLeaveMessageSize);
 
             OpenAsGameMenu();
         }
@@ -213,6 +238,8 @@ namespace MultiplayerTools.Patches
                 return;
             }
 
+            UILib.StabilizeClonedControl(slider.gameObject);
+
             TMP_Text label = slider.transform.Find("(Text) Slider Label")?.GetComponent<TMP_Text>();
             if (label != null)
             {
@@ -285,7 +312,16 @@ namespace MultiplayerTools.Patches
             UILib.SetFixedLayoutSize(input.gameObject, flexibleWidth: 1f, preferredHeight: InputHeight);
         }
 
-        private static void AddToggle(Transform parent, string label, bool value, Action<bool> setter)
+        private static void AddToggle(
+            Transform parent,
+            string label,
+            bool value,
+            Action<bool> setter,
+            bool clearLabel = false,
+            bool stabilize = true,
+            bool useFixedLayout = true,
+            float? preferredHeight = null,
+            Vector2? anchoredPosition = null)
         {
             Toggle toggle = UILib.CreateToggle(
                 parent,
@@ -294,9 +330,126 @@ namespace MultiplayerTools.Patches
                 (UnityAction<bool>)((isOn) => setter(isOn)));
 
             TMP_Text labelText = toggle.GetComponentInChildren<TMP_Text>(true);
+            if (clearLabel && labelText != null)
+                UILib.SetText(labelText, string.Empty);
             UILib.SetTextMetrics(labelText, LabelFontSize, TextAlignmentOptions.Left, autoSize: true, minFontSize: 12f);
-            UILib.StabilizeClonedControl(toggle.gameObject);
-            UILib.SetFixedLayoutSize(toggle.gameObject, flexibleWidth: 1f, preferredHeight: ToggleHeight);
+
+            if (anchoredPosition.HasValue)
+                UILib.SetRect(toggle, anchoredPosition: anchoredPosition.Value);
+
+            float height = preferredHeight ?? ToggleHeight;
+            if (useFixedLayout)
+                UILib.SetFixedLayoutSize(toggle.gameObject, flexibleWidth: 1f, preferredHeight: height);
+            else
+                UILib.SetLayout(toggle.gameObject, flexibleWidth: 1f, preferredHeight: height);
+
+            if (stabilize)
+                UILib.StabilizeClonedControl(toggle.gameObject);
+        }
+
+        private static void AddMessageRow(
+            Transform parent,
+            string label,
+            bool isOn,
+            Action<bool> setToggle,
+            int sizeValue,
+            Action<int> setSize)
+        {
+            AddGridRow(parent, MessageRowHeight, RowSpacing, new[] { 2f, 1f, 4f }, cells =>
+            {
+                CreateMessageLabel(cells[0], label);
+                AddToggle(
+                    cells[1],
+                    string.Empty,
+                    isOn,
+                    setToggle,
+                    clearLabel: true,
+                    stabilize: false,
+                    useFixedLayout: false,
+                    preferredHeight: MessageRowHeight,
+                    anchoredPosition: new Vector2(0f, -MessageRowHeight * 0.5f));
+                CreateSizeSlider(cells[2], sizeValue, setSize);
+            });
+        }
+
+        private static TMP_Text CreateMessageLabel(Transform parent, string text)
+        {
+            TMP_Text labelText = UILib.CreatePlainLabel(parent, text, "Label", UILib.Defaults.SliderLabel ?? UILib.Defaults.Label);
+            UILib.SetTextMetrics(labelText, LabelFontSize, TextAlignmentOptions.Left, autoSize: true, minFontSize: 12f);
+            labelText.color = Color.white;
+            labelText.ForceMeshUpdate();
+            UILib.SetLayout(labelText.gameObject, flexibleWidth: 1f, preferredHeight: MessageRowHeight);
+            return labelText;
+        }
+
+
+        private static MySliderUI CreateSizeSlider(Transform parent, int sizeValue, Action<int> setSize)
+        {
+            MySliderUI sliderUi = null;
+            sliderUi = UILib.CreateSlider(
+                parent,
+                name: "Size Slider",
+                minValue: 50f,
+                maxValue: 100f,
+                value: Mathf.Clamp(sizeValue, 50, 100),
+                onValueChanged: (UnityAction<float>)((value) =>
+                {
+                    setSize(Mathf.RoundToInt(value));
+                    sliderUi?.UpdateSliderValueDisplay();
+                }));
+
+            if (sliderUi == null || sliderUi.slider == null)
+                return null;
+
+            foreach (LayoutGroup layout in sliderUi.GetComponentsInChildren<LayoutGroup>(true))
+            {
+                if (layout != null)
+                    layout.enabled = false;
+            }
+
+            UILib.SetRect(sliderUi, anchoredPosition: new Vector2(240f, MessageRowHeight * -0.5f));
+            UILib.SetRect(sliderUi.slider, anchoredPosition: Vector2.zero);
+            sliderUi.slider.transform.localPosition = Vector3.zero;
+
+            TMP_Text sliderLabel = sliderUi.transform.Find("(Text) Slider Label")?.GetComponent<TMP_Text>();
+            if (sliderLabel != null)
+            {
+                UILib.SetText(sliderLabel, "Size");
+                UILib.SetTextMetrics(sliderLabel, LabelFontSize, TextAlignmentOptions.Left);
+                sliderLabel.color = Color.white;
+                sliderLabel.ForceMeshUpdate();
+            }
+
+            if (sliderUi.sliderValueText != null)
+            {
+                UILib.SetRect(
+                    sliderUi.sliderValueText,
+                    anchorMin: new Vector2(0f, 0.5f),
+                    anchorMax: new Vector2(0f, 0.5f),
+                    pivot: new Vector2(1f, 0.5f));
+                sliderUi.sliderValueText.transform.localPosition = new Vector3(160f, 17.5f, 0f);
+                UILib.SetTextMetrics(sliderUi.sliderValueText, LabelFontSize, TextAlignmentOptions.Right);
+                sliderUi.sliderValueText.color = Color.white;
+                sliderUi.sliderValueText.ForceMeshUpdate();
+            }
+
+            UILib.SetFixedLayoutSize(sliderUi.gameObject, flexibleWidth: 1f, preferredHeight: SliderHeight);
+
+            return sliderUi;
+        }
+
+        private static void AddGridRow(Transform parent, float height, float spacing, float[] trackWeights, Action<Transform[]> build)
+        {
+            UILib.GridTrackRow row = UILib.CreateGridTrackRow(parent, height: height, spacing: spacing, trackWidths: trackWeights);
+            UILib.SetFixedLayoutSize(row.GameObject, flexibleWidth: 1f, preferredHeight: height);
+
+            if (build == null || row.Tracks == null)
+                return;
+
+            build(Array.ConvertAll(row.Tracks, track => track != null ? track.transform : null));
+            Canvas.ForceUpdateCanvases();
+            LayoutRebuilder.ForceRebuildLayoutImmediate(row.GameObject.GetComponent<RectTransform>());
+            UILib.LayoutGridTracks(row, spacing: spacing, trackWidths: trackWeights);
         }
 
         private static GameObject AddPreferenceRow(Transform parent, string label)

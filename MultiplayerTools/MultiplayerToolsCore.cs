@@ -31,6 +31,8 @@ namespace MultiplayerTools
         private static MelonPreferences_Entry<string> _messageOfTheDay;
         private static MelonPreferences_Entry<bool> _showJoinMessages;
         private static MelonPreferences_Entry<bool> _showLeaveMessages;
+        private static MelonPreferences_Entry<int> _joinMessageSize;
+        private static MelonPreferences_Entry<int> _leaveMessageSize;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -43,6 +45,8 @@ namespace MultiplayerTools
         public static string MessageOfTheDay => _messageOfTheDay?.Value ?? string.Empty;
         public static bool ShowJoinMessages => _showJoinMessages?.Value ?? true;
         public static bool ShowLeaveMessages => _showLeaveMessages?.Value ?? true;
+        public static int JoinMessageSize => _joinMessageSize?.Value ?? 75;
+        public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -68,6 +72,8 @@ namespace MultiplayerTools
             _messageOfTheDay = _preferences.CreateEntry("MessageOfTheDay", string.Empty, "Message of the Day", "Private chat message sent to each player when they join your hosted lobby. Leave empty to disable.");
             _showJoinMessages = _preferences.CreateEntry("ShowJoinMessages", true, "Show Join Messages", "Broadcast a chat message when a player joins your hosted lobby.");
             _showLeaveMessages = _preferences.CreateEntry("ShowLeaveMessages", true, "Show Leave Messages", "Broadcast a chat message when a player leaves your hosted lobby.");
+            _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
+            _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
@@ -130,7 +136,7 @@ namespace MultiplayerTools
             else if (isHost && isNewConnection && ShowJoinMessages)
             {
                 string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
-                Patches.ChatSystem.BroadcastSystemMessage($"<#FA0>{username} joined.");
+                Patches.ChatSystem.BroadcastSystemMessage($"<size={JoinMessageSize}%><#FA0>{username} joined.");
             }
 
             if (isHost)
@@ -147,7 +153,7 @@ namespace MultiplayerTools
             if (isHost && wasTrackedPlayer && !isLocalPlayer && ShowLeaveMessages)
             {
                 string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(removedPlayer.Username) ? "A player" : removedPlayer.Username);
-                Patches.ChatSystem.BroadcastSystemMessage($"<#FA0>{username} left.");
+                Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#FA0>{username} left.");
             }
 
             players.RemoveAll(player => player == null || player.ConnectionID == removedPlayer.ConnectionID);
@@ -261,6 +267,24 @@ namespace MultiplayerTools
                 return;
 
             _showLeaveMessages.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetJoinMessageSize(int value)
+        {
+            if (_joinMessageSize == null)
+                return;
+
+            _joinMessageSize.Value = Math.Clamp(value, 50, 100);
+            MelonPreferences.Save();
+        }
+
+        public static void SetLeaveMessageSize(int value)
+        {
+            if (_leaveMessageSize == null)
+                return;
+
+            _leaveMessageSize.Value = Math.Clamp(value, 50, 100);
             MelonPreferences.Save();
         }
 
