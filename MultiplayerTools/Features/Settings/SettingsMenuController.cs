@@ -18,6 +18,7 @@ namespace MultiplayerTools.Features.Settings
         private GameObject _confirmationRoot;
         private SettingsDraft _draft;
         private SettingsDraft _cleanDraft;
+        private Action<bool> _dirtyStateChanged;
 
         public static SettingsMenuController Instance { get; } = new SettingsMenuController();
 
@@ -26,6 +27,8 @@ namespace MultiplayerTools.Features.Settings
         }
 
         public bool IsOpen => _root != null;
+
+        public bool HasUnappliedChanges => _draft != null && !_draft.ValueEquals(_cleanDraft);
 
         public void Open(
             Func<Transform, SettingsDraft, SettingsMenuHandle> buildMenu,
@@ -64,6 +67,7 @@ namespace MultiplayerTools.Features.Settings
                 return;
             }
 
+            NotifyDirtyStateChanged();
             OpenAsGameMenu();
         }
 
@@ -88,6 +92,7 @@ namespace MultiplayerTools.Features.Settings
 
             _draft.Apply();
             _cleanDraft = _draft.Clone();
+            NotifyDirtyStateChanged();
         }
 
         public void ApplyAndClose()
@@ -101,7 +106,21 @@ namespace MultiplayerTools.Features.Settings
             CloseWithoutPrompt();
         }
 
-        private bool HasUnappliedChanges => _draft != null && !_draft.ValueEquals(_cleanDraft);
+        public void NotifyDraftChanged()
+        {
+            NotifyDirtyStateChanged();
+        }
+
+        public void AddDirtyStateListener(Action<bool> listener)
+        {
+            _dirtyStateChanged += listener;
+            listener?.Invoke(HasUnappliedChanges);
+        }
+
+        private void NotifyDirtyStateChanged()
+        {
+            _dirtyStateChanged?.Invoke(HasUnappliedChanges);
+        }
 
         private void CloseWithoutPrompt()
         {
@@ -111,6 +130,7 @@ namespace MultiplayerTools.Features.Settings
                 _firstSelectable = null;
                 _draft = null;
                 _cleanDraft = null;
+                _dirtyStateChanged = null;
                 return;
             }
 
@@ -121,6 +141,7 @@ namespace MultiplayerTools.Features.Settings
             _firstSelectable = null;
             _draft = null;
             _cleanDraft = null;
+            _dirtyStateChanged = null;
 
             ForceCloseChat();
             RestoreClosedCursorState();
@@ -186,10 +207,7 @@ namespace MultiplayerTools.Features.Settings
 
         private static Button CreateNativeButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick, string name)
         {
-            Button button = NativeUiFactory.Button(parent, label, onClick, name);
-            SettingsMenuView.NormalizeSettingsButton(button, 14f, new Vector2(150f, 36f));
-            button.gameObject.SetActive(true);
-            return button;
+            return SettingsMenuView.CreateSettingsButton(parent, label, onClick, name, 14f, new Vector2(150f, 36f));
         }
 
         private static Transform FindNativeUiParent()

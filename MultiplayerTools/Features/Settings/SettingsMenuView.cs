@@ -15,9 +15,10 @@ namespace MultiplayerTools.Features.Settings
         private const float SliderHeight = 30f;
         private const float ToggleHeight = 24.5f;
         private const float MessageRowHeight = 36f;
+        private const float ActionRowHeight = 36f;
         private const float RowSpacing = 8f;
         private const float VerticalRowSpacing = RowSpacing + 5f;
-        private const int ScrollBottomPadding = 48;
+        private const int ScrollBottomPadding = 10;
         private const float ScrollWheelSensitivity = 35f;
         private const float TitleFontSize = 24f;
         private const float LabelFontSize = 16f;
@@ -25,6 +26,12 @@ namespace MultiplayerTools.Features.Settings
         private const float ServerNameFontSize = 16f;
         private const float ButtonFontSize = 14f;
         private const float CloseButtonFontSize = 16f;
+        private const float SectionHeaderHeight = 36f;
+        private const float HeaderTopInset = 2f;
+        private static readonly Color NormalButtonColor = new Color(22f / 255f, 156f / 255f, 220f / 255f, 1f);
+        private static readonly Color NormalButtonShadowColor = new Color(13f / 255f, 85f / 255f, 132f / 255f, 1f);
+        private static readonly Color DirtyButtonColor = new Color(108f / 255f, 99f / 255f, 184f / 255f, 1f);
+        private static readonly Color DirtyButtonShadowColor = new Color(65f / 255f, 60f / 255f, 112f / 255f, 1f);
 
         private static GameObject _firstSelectable;
 
@@ -98,7 +105,7 @@ namespace MultiplayerTools.Features.Settings
             AddSchemaField(content, SettingsSchema.LobbySimpleFields[2], draft);
             AddSchemaField(content, SettingsSchema.LobbySimpleFields[3], draft);
             AddDivider(content);
-            AddHeader(content, "Mod Settings", textScale: 0.7f, anchoredPosition: new Vector2(0f, 15f));
+            AddHeader(content, "Mod Settings", textScale: 0.7f, rowHeight: SectionHeaderHeight);
             foreach (SettingsField field in SettingsSchema.ModSimpleFields)
                 AddSchemaField(content, field, draft);
             AddMessageRow(
@@ -116,7 +123,7 @@ namespace MultiplayerTools.Features.Settings
                 draft.LeaveMessageSize,
                 value => draft.LeaveMessageSize = value);
 
-            AddActionButtons(content);
+            AddActionButtons(panel.Transform);
 
             return new SettingsMenuHandle(root, _firstSelectable);
         }
@@ -134,53 +141,80 @@ namespace MultiplayerTools.Features.Settings
             SettingsMenuController.Instance.RequestClose();
         }
 
-        private static void AddHeader(Transform parent, string label = null, bool addCloseButton = false, float textScale = 1f, Vector2? anchoredPosition = null)
+        private static void AddHeader(
+            Transform parent,
+            string label = null,
+            bool addCloseButton = false,
+            float textScale = 1f,
+            Vector2? anchoredPosition = null,
+            float rowHeight = 50f)
         {
-            GameObject row = NativeUiBuilder.HorizontalRow(parent, height: 50f).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, height: rowHeight).GameObject;
             DisableChildHeightControl(row);
 
             GameObject titleContainer = UILib.Create("Header Title Container", row.transform).GameObject;
-            UILib.SetFixedLayoutSize(titleContainer, flexibleWidth: 1f, preferredHeight: 50f);
+            UILib.SetFixedLayoutSize(titleContainer, flexibleWidth: 1f, preferredHeight: rowHeight);
 
-            TMP_Text title = NativeUiFactory.Label(titleContainer.transform, label, "Header", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
-            UILib.Stretch(title.gameObject);
+            TMP_Text title = CreateHeaderLabel(titleContainer.transform, label, "Header");
 
-            UILib.SetTextMetrics(title, TitleFontSize * Mathf.Max(0.01f, textScale), TextAlignmentOptions.Center);
+            UILib.SetTextMetrics(title, TitleFontSize * Mathf.Max(0.01f, textScale), TextAlignmentOptions.Top);
+            UILib.SetRect(
+                title,
+                anchorMin: Vector2.zero,
+                anchorMax: Vector2.one,
+                pivot: new Vector2(0.5f, 1f),
+                anchoredPosition: Vector2.zero,
+                sizeDelta: Vector2.zero);
+            title.margin = Vector4.zero;
+            title.margin = new Vector4(0f, HeaderTopInset, 0f, 0f);
             title.color = Color.white;
             title.fontStyle = FontStyles.Bold;
             title.ForceMeshUpdate();
             if (anchoredPosition != null)
             {
                 title.rectTransform.anchoredPosition = anchoredPosition.Value;
-                UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: anchoredPosition.Value.y);
+                UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: rowHeight);
             }
             else
             {
-                UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 50f);
+                UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: rowHeight);
             }
 
             if (!addCloseButton)
                 return;
 
-            Button closeButton = CreateNativeButton(row.transform, "X", (UnityAction)CloseButtonOnClick, "Close", CloseButtonFontSize, new Vector2(25f, 25f));
+            Button closeButton = CreateSettingsButton(row.transform, "X", (UnityAction)CloseButtonOnClick, "Close", CloseButtonFontSize, new Vector2(25f, 25f));
             _firstSelectable = closeButton.gameObject;
             UILib.SetFixedLayoutSize(closeButton.gameObject, preferredWidth: 25f, preferredHeight: 25f);
         }
 
+        private static TMP_Text CreateHeaderLabel(Transform parent, string label, string name)
+        {
+            GameObject labelObject = UILib.Create(name, parent).GameObject;
+            TMP_Text text = labelObject.AddComponent<TextMeshProUGUI>();
+            UILib.ApplyTextStyle(text, UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
+            UILib.SetText(text, label);
+            text.raycastTarget = false;
+            text.margin = Vector4.zero;
+            return text;
+        }
+
         private static void AddActionButtons(Transform parent)
         {
-            GameObject row = NativeUiBuilder.HorizontalRow(parent, "Actions", height: 36f, spacing: RowSpacing).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, "Actions", height: ActionRowHeight, spacing: RowSpacing).GameObject;
             DisableChildHeightControl(row);
-            UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 36f);
+            UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: ActionRowHeight);
 
             GameObject spacer = UILib.Create("Actions Spacer", row.transform).GameObject;
-            UILib.SetFixedLayoutSize(spacer, flexibleWidth: 1f, preferredHeight: 36f);
+            UILib.SetFixedLayoutSize(spacer, flexibleWidth: 1f, preferredHeight: ActionRowHeight);
 
-            Button apply = CreateNativeButton(row.transform, "Apply", (UnityAction)SettingsMenuController.Instance.Apply, "Apply", ButtonFontSize, new Vector2(150f, 36f));
+            Button apply = CreateSettingsButton(row.transform, "Apply", (UnityAction)SettingsMenuController.Instance.Apply, "Apply", ButtonFontSize, new Vector2(150f, 36f));
             UILib.SetFixedLayoutSize(apply.gameObject, preferredWidth: 150f, preferredHeight: 36f);
 
-            Button applyClose = CreateNativeButton(row.transform, "Apply & Close", (UnityAction)SettingsMenuController.Instance.ApplyAndClose, "Apply & Close", ButtonFontSize, new Vector2(190f, 36f));
+            Button applyClose = CreateSettingsButton(row.transform, "Apply & Close", (UnityAction)SettingsMenuController.Instance.ApplyAndClose, "Apply & Close", ButtonFontSize, new Vector2(190f, 36f));
             UILib.SetFixedLayoutSize(applyClose.gameObject, preferredWidth: 190f, preferredHeight: 36f);
+
+            RegisterDirtyButtonFeedback(apply, applyClose);
         }
 
         private static void AddCapacitySlider(Transform parent, SettingsDraft draft)
@@ -196,6 +230,7 @@ namespace MultiplayerTools.Features.Settings
                 {
                     draft.ServerCapacity = Mathf.RoundToInt(value);
                     slider?.UpdateSliderValueDisplay();
+                    SettingsMenuController.Instance.NotifyDraftChanged();
                 }));
 
             if (slider == null || slider.slider == null)
@@ -274,7 +309,11 @@ namespace MultiplayerTools.Features.Settings
                 text: value ?? string.Empty,
                 placeholder: placeholderText ?? string.Empty,
                 name: "Input",
-                onValueChanged: (UnityAction<string>)((text) => setter(text)));
+                onValueChanged: (UnityAction<string>)((text) =>
+                {
+                    setter(text);
+                    SettingsMenuController.Instance.NotifyDraftChanged();
+                }));
             input.lineType = TMP_InputField.LineType.SingleLine;
             bool isServerName = string.Equals(label, "Server Name", StringComparison.OrdinalIgnoreCase);
             UILib.SetInputTextStyle(input, isServerName ? ServerNameFontSize : InputFontSize, autoSize: isServerName, minFontSize: 13f);
@@ -297,7 +336,11 @@ namespace MultiplayerTools.Features.Settings
                 parent,
                 label: label,
                 isOn: value,
-                onValueChanged: (UnityAction<bool>)((isOn) => setter(isOn)));
+                onValueChanged: (UnityAction<bool>)((isOn) =>
+                {
+                    setter(isOn);
+                    SettingsMenuController.Instance.NotifyDraftChanged();
+                }));
 
             TMP_Text labelText = toggle.GetComponentInChildren<TMP_Text>(true);
             if (clearLabel && labelText != null)
@@ -319,25 +362,11 @@ namespace MultiplayerTools.Features.Settings
                 UILib.StabilizeClonedControl(toggle.gameObject);
         }
 
-        private static Button CreateNativeButton(Transform parent, string label, UnityAction onClick, string name, float fontSize, Vector2 size)
+        internal static Button CreateSettingsButton(Transform parent, string label, UnityAction onClick, string name, float fontSize, Vector2 size)
         {
-            Button button = NativeUiFactory.Button(parent, label, onClick, name);
-            NormalizeSettingsButton(button, fontSize, size);
-            button.gameObject.SetActive(true);
-            return button;
-        }
-
-        internal static void NormalizeSettingsButton(Button button, float fontSize, Vector2 size)
-        {
-            if (button == null)
-                return;
-
-            UILib.ResetLayoutSizing(button.gameObject);
-            UILib.StabilizeClonedControl(button.gameObject);
-            DisableChildImages(button);
-            UILib.SetFixedLayoutSize(button.gameObject, preferredWidth: size.x, preferredHeight: size.y, flexibleWidth: 0f, flexibleHeight: 0f);
+            GameObject buttonObject = UILib.Create(name, parent).GameObject;
             UILib.SetRect(
-                button,
+                buttonObject.GetComponent<RectTransform>(),
                 anchorMin: new Vector2(0.5f, 0.5f),
                 anchorMax: new Vector2(0.5f, 0.5f),
                 pivot: new Vector2(0.5f, 0.5f),
@@ -345,20 +374,84 @@ namespace MultiplayerTools.Features.Settings
                 sizeDelta: size,
                 scale: Vector3.one);
 
-            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
-            if (label != null)
+            Image image = UILib.CopyImage(UILib.Defaults.Button != null ? UILib.Defaults.Button.GetComponent<Image>() : UILib.Defaults.Background, buttonObject);
+            Shadow shadow = UILib.CopyShadow(UILib.Defaults.Button != null ? UILib.Defaults.Button.GetComponent<Shadow>() : UILib.Defaults.Shadow, buttonObject);
+            if (image != null)
+                image.color = NormalButtonColor;
+            if (shadow != null)
             {
-                UILib.SetTextMetrics(label, fontSize, TextAlignmentOptions.Center, autoSize: true, minFontSize: 10f);
-                UILib.SetRect(
-                    label,
-                    anchorMin: Vector2.zero,
-                    anchorMax: Vector2.one,
-                    pivot: new Vector2(0.5f, 0.5f),
-                    anchoredPosition: Vector2.zero,
-                    sizeDelta: Vector2.zero,
-                    scale: Vector3.one);
-                label.ForceMeshUpdate();
+                shadow.effectColor = NormalButtonShadowColor;
+                shadow.effectDistance *= 0.55f;
             }
+            Button button = buttonObject.AddComponent<Button>();
+            button.targetGraphic = image;
+            if (UILib.Defaults.Button != null)
+            {
+                button.colors = UILib.Defaults.Button.colors;
+                button.spriteState = UILib.Defaults.Button.spriteState;
+                button.transition = Selectable.Transition.ColorTint;
+                button.navigation = UILib.Defaults.Button.navigation;
+            }
+            button.colors = CreateButtonColorBlock(button.colors);
+            if (onClick != null)
+                button.onClick.AddListener(onClick);
+
+            UILib.SetFixedLayoutSize(button.gameObject, preferredWidth: size.x, preferredHeight: size.y, flexibleWidth: 0f, flexibleHeight: 0f);
+
+            GameObject labelObject = UILib.Create("Label", buttonObject.transform).GameObject;
+            TMP_Text text = labelObject.AddComponent<TextMeshProUGUI>();
+            UILib.ApplyTextStyle(text, UILib.Defaults.ButtonLabel ?? UILib.Defaults.Label);
+            text.color = Color.white;
+            text.raycastTarget = false;
+            UILib.SetText(text, label);
+            UILib.SetTextMetrics(text, fontSize, TextAlignmentOptions.Center, autoSize: true, minFontSize: 10f);
+            UILib.Stretch(labelObject);
+            text.ForceMeshUpdate();
+
+            buttonObject.SetActive(true);
+            return button;
+        }
+
+        private static void RegisterDirtyButtonFeedback(params Button[] buttons)
+        {
+            ColorBlock[] normalColorBlocks = new ColorBlock[buttons.Length];
+
+            for (int i = 0; i < buttons.Length; i++)
+            {
+                normalColorBlocks[i] = buttons[i] != null ? buttons[i].colors : default;
+            }
+
+            SettingsMenuController.Instance.AddDirtyStateListener((dirty) =>
+            {
+                for (int i = 0; i < buttons.Length; i++)
+                {
+                    Button button = buttons[i];
+                    if (button == null)
+                        continue;
+
+                    Image image = button.GetComponent<Image>();
+                    Shadow shadow = button.GetComponent<Shadow>();
+                    Color imageColor = dirty ? DirtyButtonColor : NormalButtonColor;
+                    Color shadowColor = dirty ? DirtyButtonShadowColor : NormalButtonShadowColor;
+
+                    if (image != null)
+                        image.color = imageColor;
+                    if (shadow != null)
+                        shadow.effectColor = shadowColor;
+
+                    button.colors = CreateButtonColorBlock(normalColorBlocks[i]);
+                }
+            });
+        }
+
+        private static ColorBlock CreateButtonColorBlock(ColorBlock template)
+        {
+            template.normalColor = Color.white;
+            template.highlightedColor = new Color(0.88f, 0.88f, 0.88f, 1f);
+            template.selectedColor = template.highlightedColor;
+            template.pressedColor = new Color(0.72f, 0.72f, 0.72f, 1f);
+            template.disabledColor = new Color(0.72f, 0.72f, 0.72f, 0.5f);
+            return template;
         }
 
         private static void DisableChildHeightControl(GameObject row)
@@ -369,21 +462,6 @@ namespace MultiplayerTools.Features.Settings
 
             layout.childControlHeight = false;
             layout.childForceExpandHeight = false;
-        }
-
-        private static void DisableChildImages(Button button)
-        {
-            if (button == null)
-                return;
-
-            foreach (Image image in button.GetComponentsInChildren<Image>(true))
-            {
-                if (image == null || image.gameObject == button.gameObject)
-                    continue;
-
-                image.enabled = false;
-                image.raycastTarget = false;
-            }
         }
 
         private static void AddMessageRow(
@@ -423,6 +501,7 @@ namespace MultiplayerTools.Features.Settings
                 {
                     setSize(Mathf.RoundToInt(value));
                     sliderUi?.UpdateSliderValueDisplay();
+                    SettingsMenuController.Instance.NotifyDraftChanged();
                 }));
 
             if (sliderUi == null || sliderUi.slider == null)
