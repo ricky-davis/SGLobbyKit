@@ -80,6 +80,20 @@ namespace MultiplayerTools.Features.Lobby
             }
         }
 
+        public void RefreshCreateLobbyFromPreferences()
+        {
+            UiReferenceController uiController = UiReferenceController.Instance;
+            Transform menuPanel = uiController?.mainMenu?.panel?.transform;
+            if (menuPanel == null)
+                return;
+
+            Transform createLobbyRoot = _lobbyMenuAdapter.FindCreateLobbyRoot(menuPanel);
+            if (createLobbyRoot == null)
+                return;
+
+            SetupCreateLobbyPanel(_lobbyMenuAdapter.ActivateEmbeddedCreateLobby(createLobbyRoot, showPanel: false));
+        }
+
         private void EnsureLobbyNameInput(UICreateLobby createLobby)
         {
             dynamic lobbyNameText = createLobby.lobbyNameText;
@@ -172,7 +186,7 @@ namespace MultiplayerTools.Features.Lobby
 
             if (_togglesInitialized)
             {
-                _enableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                RefreshLobbyOptionValues(createLobby, textChatOnlyToggle);
                 return;
             }
 
@@ -184,10 +198,8 @@ namespace MultiplayerTools.Features.Lobby
                     MultiplayerToolsCore.SetIsPublicLobby(isOn);
                 }));
             }
-            (MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : publicLobbyToggle.group.m_Toggles[0]).isOn = true;
 
             Toggle passwordProtectedToggle = createLobby.passwordProtectedToggle;
-            passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
             if (TryMarkNativeControlBound(passwordProtectedToggle))
             {
                 passwordProtectedToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
@@ -197,7 +209,6 @@ namespace MultiplayerTools.Features.Lobby
             }
 
             TMP_InputField passwordInputField = createLobby.passwordInputField;
-            passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
             if (TryMarkNativeControlBound(passwordInputField))
             {
                 passwordInputField.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
@@ -207,7 +218,6 @@ namespace MultiplayerTools.Features.Lobby
             }
 
             Toggle peacefulModeToggle = createLobby.peacefulModeToggle;
-            peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
             if (TryMarkNativeControlBound(peacefulModeToggle))
             {
                 peacefulModeToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
@@ -216,7 +226,6 @@ namespace MultiplayerTools.Features.Lobby
                 }));
             }
 
-            textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
             if (TryMarkNativeControlBound(textChatOnlyToggle))
             {
                 textChatOnlyToggle.onValueChanged.AddListener((UnityEngine.Events.UnityAction<bool>)((isOn) =>
@@ -225,8 +234,40 @@ namespace MultiplayerTools.Features.Lobby
                 }));
             }
 
+            RefreshLobbyOptionValues(createLobby, textChatOnlyToggle);
             EnsureGuestBangCommandsToggle(textChatOnlyToggle);
             _togglesInitialized = true;
+        }
+
+        private void RefreshLobbyOptionValues(UICreateLobby createLobby, Toggle textChatOnlyToggle)
+        {
+            Toggle publicLobbyToggle = createLobby.publicLobbyToggle;
+            if (publicLobbyToggle != null)
+            {
+                ToggleGroup group = publicLobbyToggle.group;
+                Toggle privateToggle = group != null && group.m_Toggles.Count > 0 ? group.m_Toggles[0] : null;
+                Toggle targetToggle = MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : privateToggle;
+                if (targetToggle != null)
+                    targetToggle.isOn = true;
+            }
+
+            Toggle passwordProtectedToggle = createLobby.passwordProtectedToggle;
+            if (passwordProtectedToggle != null)
+                passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
+
+            TMP_InputField passwordInputField = createLobby.passwordInputField;
+            if (passwordInputField != null)
+                passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
+
+            Toggle peacefulModeToggle = createLobby.peacefulModeToggle;
+            if (peacefulModeToggle != null)
+                peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
+
+            if (textChatOnlyToggle != null)
+                textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
+
+            if (_enableGuestBangCommandsToggle != null)
+                _enableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
         }
 
         private void EnsureGuestBangCommandsToggle(Toggle textChatOnlyToggle)

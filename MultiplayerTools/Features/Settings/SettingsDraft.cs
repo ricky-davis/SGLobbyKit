@@ -1,4 +1,5 @@
 using System;
+using MultiplayerTools.Features.Lobby;
 
 namespace MultiplayerTools.Features.Settings
 {
@@ -93,6 +94,8 @@ namespace MultiplayerTools.Features.Settings
             MultiplayerToolsCore.SetShowLeaveMessages(ShowLeaveMessages);
             MultiplayerToolsCore.SetJoinMessageSize(JoinMessageSize);
             MultiplayerToolsCore.SetLeaveMessageSize(LeaveMessageSize);
+
+            LobbyUiController.Instance.RefreshCreateLobbyFromPreferences();
         }
     }
 }
