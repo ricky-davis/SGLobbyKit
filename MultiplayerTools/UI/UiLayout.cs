@@ -14,7 +14,7 @@ namespace MultiplayerTools
             bool childForceExpandWidth = true,
             bool childForceExpandHeight = false)
         {
-            return UILib.SetVerticalLayout(
+            return NativeUiBackend.SetVerticalLayout(
                 gameObject,
                 padding,
                 spacing,
@@ -33,7 +33,7 @@ namespace MultiplayerTools
             Vector2? sizeDelta = null,
             Vector3? scale = null)
         {
-            UILib.SetRect(component, anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, scale);
+            NativeUiBackend.SetRect(component, anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, scale);
         }
 
         public static LayoutElement SetLayout(
@@ -45,7 +45,7 @@ namespace MultiplayerTools
             float? minWidth = null,
             float? minHeight = null)
         {
-            return UILib.SetLayout(gameObject, preferredWidth, preferredHeight, flexibleWidth, flexibleHeight, minWidth, minHeight);
+            return NativeUiBackend.SetLayout(gameObject, preferredWidth, preferredHeight, flexibleWidth, flexibleHeight, minWidth, minHeight);
         }
 
         public static void SetFixedSize(
@@ -55,7 +55,7 @@ namespace MultiplayerTools
             float? flexibleWidth = null,
             float? flexibleHeight = null)
         {
-            UILib.SetFixedLayoutSize(
+            NativeUiBackend.SetFixedLayoutSize(
                 gameObject,
                 preferredWidth: preferredWidth,
                 preferredHeight: preferredHeight,
@@ -65,32 +65,32 @@ namespace MultiplayerTools
 
         public static void Stretch(GameObject gameObject)
         {
-            UILib.Stretch(gameObject);
+            NativeUiBackend.Stretch(gameObject);
         }
 
-        public static void LayoutGridTracks(UILib.GridTrackRow row, float spacing, float[] trackWidths)
+        public static void LayoutGridTracks(GridTrackRow row, float spacing, float[] trackWidths)
         {
-            UILib.LayoutGridTracks(row, spacing: spacing, trackWidths: trackWidths);
+            NativeUiBackend.LayoutGridTracks(row, spacing: spacing, trackWidths: trackWidths);
         }
 
         public static void StabilizeClonedControl(GameObject gameObject)
         {
-            UILib.StabilizeClonedControl(gameObject);
+            NativeUiBackend.StabilizeClonedControl(gameObject);
         }
 
         public static void SetCanvasGroups(Transform root, float alpha, bool interactable, bool blocksRaycasts)
         {
-            UILib.SetCanvasGroups(root, alpha, interactable, blocksRaycasts);
+            NativeUiBackend.SetCanvasGroups(root, alpha, interactable, blocksRaycasts);
         }
 
         public static void ActivatePathToRoot(Transform start, Transform root)
         {
-            UILib.ActivatePathToRoot(start, root);
+            NativeUiBackend.ActivatePathToRoot(start, root);
         }
 
         public static void SetChildrenActive(Transform parent, bool active, string skipNameContains = null)
         {
-            UILib.SetChildrenActive(parent, active, skipNameContains);
+            NativeUiBackend.SetChildrenActive(parent, active, skipNameContains);
         }
     }
 }

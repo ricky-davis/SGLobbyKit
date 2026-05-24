@@ -2,7 +2,7 @@
 
 ## Risks
 
-- `UILib` contains many hidden game-specific assumptions. Moving helpers without preserving `UI_CreateLobby` template discovery can break visual parity.
+- `NativeUiBackend` contains game-specific assumptions. Moving helpers without preserving `UI_CreateLobby` template discovery can break visual parity.
 - Unity/Il2Cpp inactive object lookup is required. Replacing `Resources.FindObjectsOfTypeAll` with active-only searches would break template capture.
 - Native UI activation is timing-sensitive. `LobbyPatchFeatures` currently retries for 10 frames because vanilla disables create-lobby panels after `OnEnable`.
 - Listener duplication is possible on repeated main-menu enables. The rewrite needs explicit idempotency for all native control bindings.
@@ -15,18 +15,18 @@
 
 ## Open Questions
 
-- Should the rewrite preserve the static `UILib` API as a compatibility facade long term, or remove it after all call sites are migrated? Resolved: preserve it temporarily, then migrate toward `SleddingUiAdapter` as the canonical name.
+- Should the rewrite preserve the old static UI API as a compatibility facade long term, or remove it after all call sites are migrated? Resolved: remove it; `SleddingUiAdapter` and focused native UI helpers are the canonical names.
 - Should settings remain immediate-save for parity, or should the later staged apply behavior from `TODO.md` be included as a separate approved feature? Resolved: the settings window should use staged edits with an Apply button.
 - Should settings field definitions live beside `MultiplayerToolsCore` preferences, or in the settings feature folder with delegates into the core? Resolved: settings field definitions live in the settings feature folder.
 - Should template capture happen once per scene, once per menu open, or opportunistically as now? Resolved: capture explicitly on menu open or feature activation, updating the shared native template catalog/global defaults.
 - Is `ui-dump-full.json` intended as the source of truth for native UI paths and object names? Resolved: no, it is a dev-only inspection reference.
-- Which in-game scenes need to be checked for settings menu parent resolution: main menu, pause menu, active game, and lobby? Resolved: all four are supported states.
+- Which in-game scenes need to be checked for settings menu parent resolution? Resolved: `!settings` is only reachable during active gameplay.
 - Should the Sledding UI Adapter be internal-only, or designed as a reusable public helper for future mod features? Resolved: internal-only, reusable within this mod.
 
 ## Resolved Decisions
 
-- `UILib` should become a Sledding Game UI adapter/toolkit, not a game-agnostic Unity UI library. Its purpose is to clone and modify existing Sledding Game UI features so mod UI keeps the native style.
-- `UILib` should be treated as a temporary compatibility facade. The long-term canonical entry point should be `SleddingUiAdapter`, supported by explicit native UI helper types.
+- The native UI helper layer is a Sledding Game UI adapter/toolkit, not a game-agnostic Unity UI library. Its purpose is to clone and modify existing Sledding Game UI features so mod UI keeps the native style.
+- The old compatibility facade has been removed. `SleddingUiAdapter` and focused native UI helper types are the canonical entry points; `NativeUiBackend` is an internal implementation detail.
 - Known native UI object names and transform paths should be centralized in `SleddingUiPaths` rather than scattered across adapters and factories.
 - Native UI template capture should happen on menu open or feature activation. Factories should consume captured templates rather than performing normal scene searches themselves.
 - Missing-template behavior should be strict about style. The adapter should not create plain fallback controls; it should clone native UI or log and skip affected native adaptations.

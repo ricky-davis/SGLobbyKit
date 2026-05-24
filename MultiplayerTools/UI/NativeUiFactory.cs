@@ -10,12 +10,12 @@ namespace MultiplayerTools
     {
         public static UiElement Object(string name, Transform parent = null)
         {
-            return UILib.Create(name, parent);
+            return NativeUiBackend.Create(name, parent);
         }
 
         public static TMP_Text Label(Transform parent, string text, string name = "Label", TMP_Text template = null)
         {
-            return UILib.CreatePlainLabel(parent, text, name, template);
+            return NativeUiBackend.CreatePlainLabel(parent, text, name, template);
         }
 
         public static TMP_InputField Input(
@@ -25,7 +25,7 @@ namespace MultiplayerTools
             string name = "Input Field",
             UnityAction<string> onValueChanged = null)
         {
-            TMP_InputField input = UILib.CloneInputField(NativeUiTemplates.Current.InputField, parent, name, text, placeholder);
+            TMP_InputField input = NativeUiBackend.CloneInputField(NativeUiTemplates.Current.InputField, parent, name, text, placeholder);
             if (input != null && onValueChanged != null)
                 input.onValueChanged.AddListener(onValueChanged);
             return input;
@@ -39,7 +39,7 @@ namespace MultiplayerTools
             string name = "Input Field",
             int? siblingIndex = null)
         {
-            return UILib.CloneInputField(template, parent, name, text, placeholder, siblingIndex);
+            return NativeUiBackend.CloneInputField(template, parent, name, text, placeholder, siblingIndex);
         }
 
         public static Toggle Toggle(
@@ -49,7 +49,7 @@ namespace MultiplayerTools
             UnityAction<bool> onValueChanged = null,
             string name = "Toggle")
         {
-            return UILib.CloneToggle(NativeUiTemplates.Current.Toggle, parent, name, label, isOn, onValueChanged);
+            return NativeUiBackend.CloneToggle(NativeUiTemplates.Current.Toggle, parent, name, label, isOn, onValueChanged);
         }
 
         public static Toggle ToggleFromTemplate(
@@ -61,7 +61,7 @@ namespace MultiplayerTools
             string name = "Toggle",
             int? siblingIndex = null)
         {
-            return UILib.CloneToggle(template, parent, name, label, isOn, onValueChanged, siblingIndex);
+            return NativeUiBackend.CloneToggle(template, parent, name, label, isOn, onValueChanged, siblingIndex);
         }
 
         public static MySliderUI Slider(
@@ -72,27 +72,27 @@ namespace MultiplayerTools
             float? value = null,
             UnityAction<float> onValueChanged = null)
         {
-            return UILib.CreateSlider(parent, name, NativeUiTemplates.Current.Slider, minValue, maxValue, value, onValueChanged);
+            return NativeUiBackend.CreateSlider(parent, name, NativeUiTemplates.Current.Slider, minValue, maxValue, value, onValueChanged);
         }
 
         public static UiElement Panel(Transform parent, string name = "Panel")
         {
-            return UILib.CreatePanel(parent, name);
+            return NativeUiBackend.CreatePanel(parent, name);
         }
 
         public static Image Backdrop(Transform parent, Image template = null)
         {
-            return UILib.CreateScreenBackdrop(parent, template: template);
+            return NativeUiBackend.CreateScreenBackdrop(parent, template: template);
         }
 
         public static Image Backdrop(Transform parent, Color color)
         {
-            return UILib.CreateScreenBackdrop(parent, color: color);
+            return NativeUiBackend.CreateScreenBackdrop(parent, color: color);
         }
 
-        public static UILib.ScrollViewportResult ScrollView(Transform parent, string name = "Scroll Viewport")
+        public static ScrollViewport ScrollView(Transform parent, string name = "Scroll Viewport")
         {
-            return UILib.CreateScrollViewport(parent, name);
+            return NativeUiBackend.CreateScrollViewport(parent, name);
         }
     }
 }

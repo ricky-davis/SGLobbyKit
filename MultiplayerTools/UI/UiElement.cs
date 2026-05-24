@@ -123,7 +123,7 @@ namespace MultiplayerTools
 
         public UiElement CanvasGroup(float alpha = 1f, bool interactable = true, bool blocksRaycasts = true)
         {
-            UILib.SetCanvasGroups(Transform, alpha, interactable, blocksRaycasts);
+            NativeUiBackend.SetCanvasGroups(Transform, alpha, interactable, blocksRaycasts);
             return this;
         }
 
@@ -135,7 +135,7 @@ namespace MultiplayerTools
             float? minWidth = null,
             float? minHeight = null)
         {
-            UILib.SetLayout(GameObject, preferredWidth, preferredHeight, flexibleWidth, flexibleHeight, minWidth, minHeight);
+            NativeUiBackend.SetLayout(GameObject, preferredWidth, preferredHeight, flexibleWidth, flexibleHeight, minWidth, minHeight);
             return this;
         }
 

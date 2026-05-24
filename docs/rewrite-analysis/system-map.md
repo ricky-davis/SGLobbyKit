@@ -14,35 +14,21 @@
 - `LobbyPatches.UIMainMenu_OnEnable_Postfix` delegates native main menu and embedded create-lobby setup to `LobbyUiController`.
 - `LobbyPatches` prefixes lobby creation calls and delegates selected lobby name/max-player enforcement to `LobbyUiController`.
 
-## UILib Responsibilities Today
+## Native UI Adapter Responsibilities Today
 
-`UILib` is now a temporary compatibility facade over the older helper implementation. The target adapter files exist and delegate into `UILib` while call sites migrate:
+The UI helper layer is split by responsibility:
 
-- `UiElement` owns the chainable `GameObject`/`Transform` wrapper; `UILib.Element` derives from it for compatibility.
-- `NativeUiTemplates` owns template capture and access.
-- `UiStyles` owns style-copying entry points.
-- `UiLayout` owns rect/layout entry points.
-- `NativeUiFactory` owns native control clone/create entry points.
-- `NativeUiBuilder` owns common row/grid composition entry points.
+- `SleddingUiAdapter` wraps existing native objects and coordinates template capture.
+- `NativeUiTemplates` owns access to the shared captured template catalog.
+- `NativeUiTemplateSet` stores captured native button, label, input, toggle, slider, scrollbar, panel, image, and shadow templates.
+- `NativeUiFactory` creates/clones native-style controls from captured templates.
+- `NativeUiBuilder` owns common row/grid composition helpers.
+- `UiStyles` owns text/image/shadow style helpers.
+- `UiLayout` owns rect, layout, activation, and cloned-control stabilization helpers.
+- `UiElement` owns the chainable `GameObject`/`Transform` wrapper.
+- `NativeUiBackend` is the internal implementation detail for native object lookup, template capture, cloning, styling, and layout.
 
-The remaining `UILib` implementation still contains these responsibilities:
-
-1. Template discovery and style capture
-   - `DefaultReferences`
-   - `CaptureDefaultsFrom`
-   - `CaptureSceneDefaults`
-   - hard-coded create-lobby and main-menu path searches.
-
-2. Primitive factory and clone helpers
-   - labels, buttons, inputs, toggles, sliders, scrollbars, panels, backgrounds, backdrops, scroll viewports.
-
-3. Layout and normalization helpers
-   - vertical/horizontal layout groups.
-   - manual grid track layout.
-   - layout element sizing.
-   - cloned control stabilization and animation cleanup.
-
-The remaining migration work is to move feature call sites to the adapter files, then obsolete or remove unused compatibility methods.
+Feature code should use the focused helper classes above instead of calling `NativeUiBackend` directly.
 
 ## Settings Menu Responsibilities Today
 
@@ -76,7 +62,7 @@ The lobby feature owns:
 - Embedded create-lobby activation coroutine.
 - Native close-button hiding.
 
-Patch hooks, native lobby view adaptation, and lobby submission data handling have been split. Remaining lobby rewrite work should continue reducing `LobbyUiController` by moving native control composition and binding details behind clearer adapter methods.
+Patch hooks, native lobby view adaptation, and lobby submission data handling have been split behind focused adapter/controller methods.
 
 ## State And Data Flow
 
@@ -84,7 +70,7 @@ Patch hooks, native lobby view adaptation, and lobby submission data handling ha
 - Native create-lobby UI controls read static properties and call static setter methods immediately on value changes.
 - The settings window should read static properties into a staged draft and call static setter methods only when Apply is pressed.
 - Lobby creation prefixes read UI controls when available and fall back to preferences.
-- The current settings menu applies changes immediately. The rewrite intentionally changes the settings window to staged edits with an Apply button.
+- The settings window reads static properties into a staged draft and calls static setter methods only when Apply is pressed.
 
 ## User Interaction Boundaries
 

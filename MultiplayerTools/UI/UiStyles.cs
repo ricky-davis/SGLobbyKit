@@ -8,27 +8,27 @@ namespace MultiplayerTools
     {
         public static void ApplyText(TMP_Text target, TMP_Text template = null)
         {
-            UILib.ApplyTextStyle(target, template);
+            NativeUiBackend.ApplyTextStyle(target, template);
         }
 
         public static void SetText(TMP_Text target, string text, bool removeLocalization = true)
         {
-            UILib.SetText(target, text, removeLocalization);
+            NativeUiBackend.SetText(target, text, removeLocalization);
         }
 
         public static void SetButtonColors(Button button, Color imageColor, Color shadowColor)
         {
-            UILib.SetButtonColors(button, imageColor, shadowColor);
+            NativeUiBackend.SetButtonColors(button, imageColor, shadowColor);
         }
 
         public static Image CopyImage(Image template, GameObject target)
         {
-            return UILib.CopyImage(template, target);
+            return NativeUiBackend.CopyImage(template, target);
         }
 
         public static Shadow CopyShadow(Shadow template, GameObject target)
         {
-            return UILib.CopyShadow(template, target);
+            return NativeUiBackend.CopyShadow(template, target);
         }
 
         public static void SetTextMetrics(
@@ -38,12 +38,12 @@ namespace MultiplayerTools
             bool autoSize = false,
             float minFontSize = 10f)
         {
-            UILib.SetTextMetrics(text, fontSize, alignment, autoSize, minFontSize);
+            NativeUiBackend.SetTextMetrics(text, fontSize, alignment, autoSize, minFontSize);
         }
 
         public static void SetInputTextStyle(TMP_InputField input, float fontSize, bool autoSize = false, float minFontSize = 10f)
         {
-            UILib.SetInputTextStyle(input, fontSize, autoSize: autoSize, minFontSize: minFontSize);
+            NativeUiBackend.SetInputTextStyle(input, fontSize, autoSize: autoSize, minFontSize: minFontSize);
         }
     }
 }

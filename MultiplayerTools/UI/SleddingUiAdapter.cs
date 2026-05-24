@@ -6,22 +6,22 @@ namespace MultiplayerTools
     {
         public static UiElement Assume(GameObject gameObject)
         {
-            return UILib.Assume(gameObject);
+            return NativeUiBackend.Assume(gameObject);
         }
 
         public static UiElement Assume(Component component)
         {
-            return UILib.Assume(component);
+            return NativeUiBackend.Assume(component);
         }
 
         public static UiElement Assume(Transform transform)
         {
-            return UILib.Assume(transform);
+            return NativeUiBackend.Assume(transform);
         }
 
         public static UiElement Find(string sceneObjectName)
         {
-            return UILib.Find(sceneObjectName);
+            return NativeUiBackend.Find(sceneObjectName);
         }
 
         public static void CaptureSceneTemplates(bool overwriteExisting = false)

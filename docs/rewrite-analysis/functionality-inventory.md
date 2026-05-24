@@ -1,21 +1,19 @@
 # Functionality Inventory
 
-## UILib
+## Native UI Adapter
 
 Preserve these public capabilities:
 
-- Wrap existing objects/components/transforms with an `Element` handle.
+- Wrap existing objects/components/transforms with a `UiElement` handle.
 - Create bare UI objects with `RectTransform`.
 - Find named scene objects, including inactive objects via `Resources.FindObjectsOfTypeAll`.
 - Capture default references from arbitrary roots and from the active scene.
-- Clone templates for buttons, text, inputs, toggles, sliders, and scrollbars.
-- Create fallback labels, buttons, inputs, and toggles when templates are unavailable.
+- Clone native templates for text, inputs, toggles, sliders, panels, backdrops, and scrollbars.
 - Create panels, backgrounds, screen backdrops, scroll viewports, horizontal rows, flex rows, and grid-track rows.
-- Apply text, button, toggle, image, shadow, and layout styles.
+- Apply text, toggle, image, shadow, and layout styles.
 - Remove localization components before setting replacement text.
-- Reset layout sizing and normalize cloned UI scales.
+- Normalize cloned UI scales.
 - Stabilize cloned controls by disabling content fitters, select animations, and `AnimationSelectableUi` behavior.
-- Create an overlay canvas and ensure an event system exists.
 - Set canvas group visibility/interactivity.
 - Activate paths and children in native UI trees.
 

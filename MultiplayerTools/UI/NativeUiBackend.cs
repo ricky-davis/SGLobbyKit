@@ -8,42 +8,15 @@ using Object = UnityEngine.Object;
 
 namespace MultiplayerTools
 {
-    public static class UILib
+    internal static class NativeUiBackend
     {
         private static int _lastAutoCaptureFrame = -1;
         private static readonly Color FallbackPanelColor = new Color(0.09f, 0.5f, 0.74f, 0.97f);
         private static readonly Color FallbackInputColor = new Color(0.95f, 0.96f, 0.98f, 1f);
         private static readonly Color FallbackToggleCheckColor = new Color(0.17f, 0.74f, 0.45f, 1f);
 
-        public sealed class Element : UiElement
-        {
-            public Element(GameObject gameObject)
-                : base(gameObject)
-            {
-            }
-        }
-
-        public sealed class DefaultReferences
-        {
-            public Button Button;
-            public TMP_Text Label;
-            public TMP_Text HeaderLabel;
-            public TMP_Text ButtonLabel;
-            public TMP_Text ToggleLabel;
-            public TMP_Text SliderLabel;
-            public TMP_Text InputText;
-            public TMP_Text InputPlaceholder;
-            public TMP_InputField InputField;
-            public Toggle Toggle;
-            public MySliderUI Slider;
-            public Scrollbar Scrollbar;
-            public Image Background;
-            public Shadow Shadow;
-            public GameObject Panel;
-        }
-
-        public static DefaultReferences Defaults { get; } = new DefaultReferences();
-        private static void SetDefaults(DefaultReferences references, bool overwriteExisting = true)
+        internal static NativeUiTemplateSet Defaults { get; } = new NativeUiTemplateSet();
+        private static void SetDefaults(NativeUiTemplateSet references, bool overwriteExisting = true)
         {
             if (references == null)
                 return;
@@ -72,7 +45,7 @@ namespace MultiplayerTools
             Defaults.Shadow = PickDefault(Defaults.Shadow, template != null ? template.GetComponent<Shadow>() : null, overwriteExisting);
         }
 
-        public static void CaptureDefaultsFrom(Transform root, bool overwriteExisting = false)
+        internal static void CaptureDefaultsFrom(Transform root, bool overwriteExisting = false)
         {
             if (root == null)
                 return;
@@ -87,7 +60,7 @@ namespace MultiplayerTools
             TMP_Text inputText = input != null ? input.textComponent : null;
             TMP_Text inputPlaceholder = input != null && input.placeholder != null ? input.placeholder.GetComponent<TMP_Text>() : null;
 
-            SetDefaults(new DefaultReferences
+            SetDefaults(new NativeUiTemplateSet
             {
                 Button = button,
                 Label = root.GetComponentInChildren<TMP_Text>(true),
@@ -106,7 +79,7 @@ namespace MultiplayerTools
             }, overwriteExisting);
         }
 
-        public static void CaptureSceneDefaults(bool overwriteExisting = false)
+        internal static void CaptureSceneDefaults(bool overwriteExisting = false)
         {
             GameObject createLobby = FindNamedObject(SleddingUiPaths.CreateLobbyRoot);
             if (createLobby != null)
@@ -133,27 +106,27 @@ namespace MultiplayerTools
                 CaptureDefaultsFrom(mainMenuPanel.transform, overwriteExisting);
         }
 
-        public static Element Assume(GameObject gameObject)
+        internal static UiElement Assume(GameObject gameObject)
         {
-            return new Element(gameObject);
+            return new UiElement(gameObject);
         }
 
-        public static Element Assume(Component component)
+        internal static UiElement Assume(Component component)
         {
-            return new Element(component != null ? component.gameObject : null);
+            return new UiElement(component != null ? component.gameObject : null);
         }
 
-        public static Element Assume(Transform transform)
+        internal static UiElement Assume(Transform transform)
         {
-            return new Element(transform != null ? transform.gameObject : null);
+            return new UiElement(transform != null ? transform.gameObject : null);
         }
 
-        public static Element Find(string sceneObjectName)
+        internal static UiElement Find(string sceneObjectName)
         {
-            return new Element(string.IsNullOrEmpty(sceneObjectName) ? null : FindNamedObject(sceneObjectName));
+            return new UiElement(string.IsNullOrEmpty(sceneObjectName) ? null : FindNamedObject(sceneObjectName));
         }
 
-        public static Element Create(string name, Transform parent = null, bool active = true)
+        internal static UiElement Create(string name, Transform parent = null, bool active = true)
         {
             GameObject gameObject = new GameObject(string.IsNullOrEmpty(name) ? "UI Element" : name);
             if (parent != null)
@@ -161,17 +134,17 @@ namespace MultiplayerTools
 
             EnsureRectTransform(gameObject);
             gameObject.SetActive(active);
-            return new Element(gameObject);
+            return new UiElement(gameObject);
         }
 
-        public static Element Clone(GameObject template, Transform parent, string name = null, int? siblingIndex = null, bool active = true)
+        internal static UiElement Clone(GameObject template, Transform parent, string name = null, int? siblingIndex = null, bool active = true)
         {
             if (template == null)
-                return new Element(null);
+                return new UiElement(null);
 
             GameObject clone = Object.Instantiate(template, parent);
             if (clone == null)
-                return new Element(null);
+                return new UiElement(null);
 
             if (!string.IsNullOrEmpty(name))
                 clone.name = name;
@@ -179,16 +152,16 @@ namespace MultiplayerTools
                 clone.transform.SetSiblingIndex(siblingIndex.Value);
 
             clone.SetActive(active);
-            return new Element(clone);
+            return new UiElement(clone);
         }
 
-        public static T CloneComponent<T>(T template, Transform parent, string name = null, int? siblingIndex = null, bool active = true)
+        internal static T CloneComponent<T>(T template, Transform parent, string name = null, int? siblingIndex = null, bool active = true)
             where T : Component
         {
             return Clone(template != null ? template.gameObject : null, parent, name, siblingIndex, active).Get<T>();
         }
 
-        public static TMP_InputField CloneInputField(
+        internal static TMP_InputField CloneInputField(
             TMP_InputField template,
             Transform parent,
             string name = null,
@@ -213,7 +186,7 @@ namespace MultiplayerTools
             return clone;
         }
 
-        public static Toggle CloneToggle(
+        internal static Toggle CloneToggle(
             Toggle template,
             Transform parent,
             string name = null,
@@ -240,14 +213,14 @@ namespace MultiplayerTools
             return clone;
         }
 
-        public static TMP_Text CreatePlainLabel(
+        internal static TMP_Text CreatePlainLabel(
             Transform parent,
             string text,
             string name = "Label",
             TMP_Text template = null,
             bool active = true)
         {
-            Element element = Create(string.IsNullOrEmpty(name) ? "Label" : name, parent, active);
+            UiElement element = Create(string.IsNullOrEmpty(name) ? "Label" : name, parent, active);
             TMP_Text label = element.GameObject.AddComponent<TextMeshProUGUI>();
             ApplyTextStyle(label, template ?? Defaults.Label);
             label.raycastTarget = false;
@@ -255,7 +228,7 @@ namespace MultiplayerTools
             return label;
         }
 
-        public static MySliderUI CreateSlider(
+        internal static MySliderUI CreateSlider(
             Transform parent,
             string name = "Slider",
             MySliderUI template = null,
@@ -320,16 +293,7 @@ namespace MultiplayerTools
             return scrollbar;
         }
 
-        public sealed class ScrollViewportResult
-        {
-            public GameObject Root;
-            public RectTransform ViewportRect;
-            public RectTransform ContentRect;
-            public ScrollRect ScrollRect;
-            public Scrollbar Scrollbar;
-        }
-
-        public static ScrollViewportResult CreateScrollViewport(
+        internal static ScrollViewport CreateScrollViewport(
             Transform parent,
             string name = "Scroll Viewport",
             Vector2? sizeDelta = null,
@@ -339,7 +303,7 @@ namespace MultiplayerTools
             const float scrollbarWidth = 18f;
             const float contentRightPadding = 16f;
 
-            Element root = Create(name, parent);
+            UiElement root = Create(name, parent);
             GameObject rootGo = root.GameObject;
             if (sizeDelta.HasValue)
                 SetRect(EnsureRectTransform(rootGo), sizeDelta: sizeDelta);
@@ -397,7 +361,7 @@ namespace MultiplayerTools
             Mask mask = viewportImage.gameObject.GetComponent<Mask>() ?? viewportImage.gameObject.AddComponent<Mask>();
             mask.showMaskGraphic = false;
 
-            return new ScrollViewportResult
+            return new ScrollViewport
             {
                 Root = rootGo,
                 ViewportRect = viewportRect,
@@ -407,7 +371,7 @@ namespace MultiplayerTools
             };
         }
 
-        public static Element CreatePanel(
+        internal static UiElement CreatePanel(
             Transform parent,
             string name = "Panel",
             GameObject template = null,
@@ -426,13 +390,13 @@ namespace MultiplayerTools
 
             if (cloneTemplate && panelTemplate != null)
             {
-                Element clone = Clone(panelTemplate, parent, name, siblingIndex, active);
+                UiElement clone = Clone(panelTemplate, parent, name, siblingIndex, active);
                 NormalizeClonedUiRoot(clone.GameObject);
                 SetRect(clone.RectTransform, anchoredPosition, sizeDelta);
                 return clone;
             }
 
-            Element panel = Create(name, parent, active);
+            UiElement panel = Create(name, parent, active);
             if (siblingIndex.HasValue)
                 panel.SiblingIndex(siblingIndex.Value);
 
@@ -466,7 +430,7 @@ namespace MultiplayerTools
             return panel;
         }
 
-        public static Image CreateBackground(
+        internal static Image CreateBackground(
             Transform parent,
             string name = "Background",
             Image template = null,
@@ -477,7 +441,7 @@ namespace MultiplayerTools
             bool active = true)
         {
             CaptureSceneDefaultsIf(template == null && Defaults.Background == null);
-            Element backgroundElement = Create(name, parent, active);
+            UiElement backgroundElement = Create(name, parent, active);
             if (siblingIndex.HasValue)
                 backgroundElement.SiblingIndex(siblingIndex.Value);
 
@@ -493,13 +457,13 @@ namespace MultiplayerTools
             return background;
         }
 
-        public static Image CreateScreenBackdrop(
+        internal static Image CreateScreenBackdrop(
             Transform parent,
             string name = "Backdrop",
             Image template = null,
             Color? color = null)
         {
-            Element backdrop = Create(name, parent);
+            UiElement backdrop = Create(name, parent);
             Image image = CopyImage(template, backdrop.GameObject);
             if (image == null)
                 return null;
@@ -510,7 +474,7 @@ namespace MultiplayerTools
             return image;
         }
 
-        public static RectTransform EnsureRectTransform(GameObject gameObject)
+        internal static RectTransform EnsureRectTransform(GameObject gameObject)
         {
             if (gameObject == null)
                 return null;
@@ -519,7 +483,7 @@ namespace MultiplayerTools
             return rectTransform != null ? rectTransform : gameObject.AddComponent<RectTransform>();
         }
 
-        public static void SetRect(
+        internal static void SetRect(
             Component component,
             Vector2? anchoredPosition = null,
             Vector2? sizeDelta = null,
@@ -531,7 +495,7 @@ namespace MultiplayerTools
             SetRect(component != null ? component.GetComponent<RectTransform>() : null, anchoredPosition, sizeDelta, anchorMin, anchorMax, pivot, scale);
         }
 
-        public static void SetRect(
+        internal static void SetRect(
             RectTransform rectTransform,
             Vector2? anchoredPosition = null,
             Vector2? sizeDelta = null,
@@ -557,7 +521,7 @@ namespace MultiplayerTools
                 rectTransform.localScale = scale.Value;
         }
 
-        public static void SetCanvasGroups(
+        internal static void SetCanvasGroups(
             Transform root,
             float alpha = 1f,
             bool interactable = true,
@@ -578,7 +542,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static void ActivatePathToRoot(Transform start, Transform root)
+        internal static void ActivatePathToRoot(Transform start, Transform root)
         {
             for (Transform target = start; target != null; target = target.parent)
             {
@@ -588,7 +552,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static void SetChildrenActive(Transform parent, bool active, string skipNameContains = null)
+        internal static void SetChildrenActive(Transform parent, bool active, string skipNameContains = null)
         {
             if (parent == null)
                 return;
@@ -605,7 +569,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static VerticalLayoutGroup SetVerticalLayout(
+        internal static VerticalLayoutGroup SetVerticalLayout(
             GameObject gameObject,
             RectOffset padding = null,
             float spacing = 0f,
@@ -630,7 +594,7 @@ namespace MultiplayerTools
             return layout;
         }
 
-        public static HorizontalLayoutGroup SetHorizontalLayout(
+        internal static HorizontalLayoutGroup SetHorizontalLayout(
             GameObject gameObject,
             float spacing = 0f,
             RectOffset padding = null,
@@ -655,22 +619,22 @@ namespace MultiplayerTools
             return layout;
         }
 
-        public static Element CreateHorizontalRow(Transform parent, string name = "Row", float height = 38f, float spacing = 14f)
+        internal static UiElement CreateHorizontalRow(Transform parent, string name = "Row", float height = 38f, float spacing = 14f)
         {
-            Element row = Create(name, parent);
+            UiElement row = Create(name, parent);
             SetHorizontalLayout(row.GameObject, spacing);
             SetFixedLayoutSize(row.GameObject, preferredHeight: height);
             return row;
         }
 
-        public static Element CreateFlexRow(
+        internal static UiElement CreateFlexRow(
             Transform parent,
             string name = "Row",
             float height = 38f,
             float spacing = 14f,
             RectOffset padding = null)
         {
-            Element row = Create(name, parent);
+            UiElement row = Create(name, parent);
             SetHorizontalLayout(
                 row.GameObject,
                 spacing,
@@ -683,19 +647,7 @@ namespace MultiplayerTools
             return row;
         }
 
-        public sealed class GridTrackRow
-        {
-            public GridTrackRow(GameObject gameObject, RectTransform[] tracks)
-            {
-                GameObject = gameObject;
-                Tracks = tracks;
-            }
-
-            public GameObject GameObject { get; }
-            public RectTransform[] Tracks { get; }
-        }
-
-        public static GridTrackRow CreateGridTrackRow(
+        internal static GridTrackRow CreateGridTrackRow(
             Transform parent,
             string name = "Row",
             float height = 38f,
@@ -703,7 +655,7 @@ namespace MultiplayerTools
             RectOffset padding = null,
             params float[] trackWidths)
         {
-            Element row = Create(name, parent);
+            UiElement row = Create(name, parent);
             SetFixedLayoutSize(row.GameObject, preferredHeight: height);
 
             if (trackWidths == null || trackWidths.Length == 0)
@@ -736,7 +688,7 @@ namespace MultiplayerTools
             return grid;
         }
 
-        public static void LayoutGridTracks(GridTrackRow gridRow, float spacing = 14f, RectOffset padding = null, params float[] trackWidths)
+        internal static void LayoutGridTracks(GridTrackRow gridRow, float spacing = 14f, RectOffset padding = null, params float[] trackWidths)
         {
             if (gridRow == null || gridRow.Tracks == null || gridRow.Tracks.Length == 0)
                 return;
@@ -783,7 +735,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static LayoutElement SetFixedLayoutSize(
+        internal static LayoutElement SetFixedLayoutSize(
             GameObject gameObject,
             float? preferredWidth = null,
             float? preferredHeight = null,
@@ -808,7 +760,7 @@ namespace MultiplayerTools
             return layout;
         }
 
-        public static LayoutElement SetLayout(
+        internal static LayoutElement SetLayout(
             GameObject gameObject,
             float? preferredWidth = null,
             float? preferredHeight = null,
@@ -840,7 +792,7 @@ namespace MultiplayerTools
             return layout;
         }
 
-        public static void StabilizeClonedControl(GameObject gameObject)
+        internal static void StabilizeClonedControl(GameObject gameObject)
         {
             if (gameObject == null)
                 return;
@@ -886,7 +838,7 @@ namespace MultiplayerTools
             NormalizeClonedUiRoot(gameObject);
         }
 
-        public static void SetTextMetrics(
+        internal static void SetTextMetrics(
             TMP_Text textComponent,
             float fontSize,
             TextAlignmentOptions alignment = TextAlignmentOptions.Left,
@@ -911,7 +863,7 @@ namespace MultiplayerTools
             textComponent.ForceMeshUpdate();
         }
 
-        public static void SetInputTextStyle(
+        internal static void SetInputTextStyle(
             TMP_InputField input,
             float fontSize,
             TextAlignmentOptions alignment = TextAlignmentOptions.MidlineLeft,
@@ -938,7 +890,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static TMP_Text SetText(TMP_Text textComponent, string text, bool removeLocalization = true)
+        internal static TMP_Text SetText(TMP_Text textComponent, string text, bool removeLocalization = true)
         {
             if (textComponent == null)
                 return null;
@@ -951,7 +903,7 @@ namespace MultiplayerTools
             return textComponent;
         }
 
-        public static void RemoveLocalization(Component component)
+        internal static void RemoveLocalization(Component component)
         {
             if (component == null)
                 return;
@@ -971,7 +923,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static void ApplyTextStyle(TMP_Text target, TMP_Text template = null)
+        internal static void ApplyTextStyle(TMP_Text target, TMP_Text template = null)
         {
             if (target == null)
                 return;
@@ -996,7 +948,7 @@ namespace MultiplayerTools
             target.paragraphSpacing = template.paragraphSpacing;
         }
 
-        public static void ApplyToggleStyle(Toggle toggle, Toggle template = null)
+        internal static void ApplyToggleStyle(Toggle toggle, Toggle template = null)
         {
             if (toggle == null)
                 return;
@@ -1078,18 +1030,18 @@ namespace MultiplayerTools
             return shadow;
         }
 
-        public static void SetButtonColors(Button button, Color imageColor, Color shadowColor)
+        internal static void SetButtonColors(Button button, Color imageColor, Color shadowColor)
         {
             SetImageColor(button, imageColor);
             SetShadowColor(button, shadowColor);
         }
 
-        public static Shadow CopyShadow(Shadow template, GameObject target)
+        internal static Shadow CopyShadow(Shadow template, GameObject target)
         {
             return target != null ? CopyShadow(template, target.transform) : null;
         }
 
-        public static Shadow CopyShadow(Shadow template, Component component)
+        internal static Shadow CopyShadow(Shadow template, Component component)
         {
             if (component == null)
                 return null;
@@ -1108,7 +1060,7 @@ namespace MultiplayerTools
             return shadow;
         }
 
-        public static Image CopyImage(Image template, GameObject target)
+        internal static Image CopyImage(Image template, GameObject target)
         {
             if (target == null)
                 return null;
@@ -1231,7 +1183,7 @@ namespace MultiplayerTools
             TMP_Text inputText = input != null ? input.textComponent : null;
             TMP_Text inputPlaceholder = input != null && input.placeholder != null ? input.placeholder.GetComponent<TMP_Text>() : null;
 
-            SetDefaults(new DefaultReferences
+            SetDefaults(new NativeUiTemplateSet
             {
                 Button = button,
                 Label = label,
@@ -1433,7 +1385,7 @@ namespace MultiplayerTools
             }
         }
 
-        public static RectTransform Stretch(GameObject gameObject)
+        internal static RectTransform Stretch(GameObject gameObject)
         {
             RectTransform rect = EnsureRectTransform(gameObject);
             rect.anchorMin = Vector2.zero;

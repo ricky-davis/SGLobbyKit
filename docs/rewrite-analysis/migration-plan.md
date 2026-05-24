@@ -47,7 +47,7 @@ MultiplayerTools/
 │       └── MainMenuAdapter.cs
 ```
 
-Keep compatibility wrappers in `UILib` at first. Existing callers can move gradually while tests/in-game checks compare behavior.
+Compatibility wrappers have been removed. Feature code now uses `SleddingUiAdapter` and focused native UI helpers directly, with `NativeUiBackend` kept as an internal implementation detail.
 
 The Sledding UI Adapter is an internal mod subsystem, not a public library for other mods. Its APIs should be clean enough for future MultiplayerTools features, but they do not need public versioning guarantees.
 
@@ -55,7 +55,7 @@ The Sledding UI Adapter is an internal mod subsystem, not a public library for o
 
 ### `SleddingUiAdapter`
 
-The canonical long-term entry point for mod UI creation and native UI adaptation. `UILib` should remain as a temporary compatibility facade while call sites migrate.
+The canonical entry point for mod UI creation and native UI adaptation.
 
 ### `SleddingUiPaths`
 
@@ -65,7 +65,7 @@ Centralizes known Sledding Game UI root names and transform paths such as `UI_Cr
 
 ### `UiElement`
 
-Replacement for `UILib.Element`.
+Chainable wrapper for native and mod-created Unity UI objects.
 
 - Wraps `GameObject`.
 - Provides `Rect`, `Transform`, `Show`, `Hide`, `Destroy`, `ParentTo`, `Move`, `Size`, `Anchors`, `Layout`.
@@ -286,21 +286,21 @@ Patch methods should become thin delegates.
 
 ## Recommended Implementation Phases
 
-1. Add new `UI/` files and move clone/style/layout helpers from `UILib` while preserving `UILib` wrappers.
+1. Add focused `UI/` files and move clone/style/layout helpers behind the native UI adapter.
 2. Move native UI object names and transform paths into `SleddingUiPaths`.
-3. Move native template capture into `NativeUiTemplates`; leave `UILib.Capture*` as forwarding methods during migration, but make callers capture explicitly before building UI.
-4. Move style/copy/layout methods into `UiStyles` and `UiLayout`; leave forwarding wrappers.
+3. Move native template capture into `NativeUiTemplates` and make callers capture explicitly before building UI.
+4. Move style/copy/layout methods into `UiStyles` and `UiLayout`.
 5. Introduce options types for new factory methods, then port `SettingsCommand` to them.
 6. Extract `SettingsMenuView` and `SettingsMenuController`; reduce `SettingsCommand` to patch/command glue.
 7. Extract `MainMenuAdapter`, `LobbyMenuAdapter`, and `LobbyCreateSubmission`; reduce `LobbyPatchFeatures` to Harmony glue.
-8. Delete or deprecate unused `UILib` methods after all call sites are moved.
+8. Delete unused compatibility methods after all call sites are moved.
 9. Perform in-game parity checks against `parity-checklist.md`.
 
 ## Naming Guidance
 
 Prefer names that reflect standard UI concepts:
 
-- `SleddingUiAdapter` as the canonical entry point instead of catch-all `UILib`.
+- `SleddingUiAdapter` as the canonical entry point instead of a catch-all UI library.
 - `SleddingUiPaths` for native object names and transform paths.
 - `NativeUiFactory` for native-control clone/create methods.
 - `NativeUiTemplates` for captured native references.

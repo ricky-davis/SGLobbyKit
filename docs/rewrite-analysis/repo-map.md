@@ -33,20 +33,28 @@ No test project, formatter config, or CI workflow exists in this repository.
   - Implements bang commands, host checks, command help, MOTD, teleport commands, and `!settings`.
   - Calls `SettingsCommand.HandleCommand` for the host-only settings menu.
 
-- `UILib.cs`
-  - Temporary compatibility facade over the older UI helper implementation.
-  - Still contains legacy template capture, clone/create, style, layout, and fallback helper implementations while call sites migrate to the Sledding UI adapter files.
-
 - `UI/SleddingUiAdapter.cs`
-  - Compatibility entry point for Sledding-native UI adaptation.
-  - Delegates template capture/clearing to `NativeUiTemplates`.
+  - Entry point for Sledding-native UI adaptation.
+  - Wraps existing native objects and coordinates explicit template capture.
 
 - `UI/SleddingUiPaths.cs`
   - Centralizes known native Sledding UI object names and transform paths.
 
 - `UI/UiElement.cs`
   - Chainable wrapper around Unity `GameObject`, `Transform`, and `RectTransform`.
-  - `UILib.Element` now derives from this for compatibility.
+
+- `UI/NativeUiBackend.cs`
+  - Internal implementation for native object lookup, template capture, cloning, styling, layout, and activation helpers.
+  - Kept behind focused helper classes so feature code does not call a catch-all UI library.
+
+- `UI/NativeUiTemplateSet.cs`
+  - Holds captured native Sledding UI templates.
+
+- `UI/ScrollViewport.cs`
+  - Data object returned when building a native-style scroll viewport.
+
+- `UI/GridTrackRow.cs`
+  - Data object for manual grid-row track layout.
 
 - `UI/NativeUiTemplates.cs`
   - Owns native template capture, clearing, and access to the current template catalog.
@@ -110,8 +118,8 @@ No test project, formatter config, or CI workflow exists in this repository.
 
 The requested overhaul is focused on:
 
-- `UILib.cs`
+- `UI/NativeUiBackend.cs`
 - `SettingsCommand.cs`
 - `LobbyPatchFeatures.cs`
 
-These files currently form one broad UI subsystem but do not have clear ownership boundaries. The rewrite should split them into a conventional UI toolkit layer, game template/style layer, feature-specific views, and Harmony integration patches.
+The old catch-all UI subsystem has been split into native UI adapter helpers, feature-specific views/controllers, and thin Harmony integration patches.

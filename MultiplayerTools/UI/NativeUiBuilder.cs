@@ -6,7 +6,7 @@ namespace MultiplayerTools
     {
         public static UiElement HorizontalRow(Transform parent, string name = "Row", float height = 38f, float spacing = 14f)
         {
-            return UILib.CreateHorizontalRow(parent, name, height, spacing);
+            return NativeUiBackend.CreateHorizontalRow(parent, name, height, spacing);
         }
 
         public static UiElement FlexRow(
@@ -16,10 +16,10 @@ namespace MultiplayerTools
             float spacing = 14f,
             RectOffset padding = null)
         {
-            return UILib.CreateFlexRow(parent, name, height, spacing, padding);
+            return NativeUiBackend.CreateFlexRow(parent, name, height, spacing, padding);
         }
 
-        public static UILib.GridTrackRow GridTrackRow(
+        public static GridTrackRow GridTrackRow(
             Transform parent,
             string name = "Grid Row",
             float height = 38f,
@@ -27,7 +27,7 @@ namespace MultiplayerTools
             RectOffset padding = null,
             float[] trackWidths = null)
         {
-            return UILib.CreateGridTrackRow(parent, name, height, spacing, padding, trackWidths);
+            return NativeUiBackend.CreateGridTrackRow(parent, name, height, spacing, padding, trackWidths);
         }
     }
 }

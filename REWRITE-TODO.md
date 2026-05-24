@@ -6,7 +6,7 @@
 - [x] Record ADR for staged settings window edits.
 - [x] Record ADR for Sledding UI Adapter architecture.
 - [x] Add `SleddingUiPaths`.
-- [x] Add `SleddingUiAdapter` compatibility entry point over `UILib`.
+- [x] Add `SleddingUiAdapter` entry point for native Sledding UI helpers.
 - [x] Add `SettingsDraft`.
 - [x] Add initial `SettingsSchema`.
 - [x] Add `LobbyUiController` shell with native binding tracking.
@@ -48,17 +48,17 @@
 
 ## Sledding UI Adapter
 
-- [x] Split `UILib.Element` into `UiElement`.
+- [x] Extract chainable UI wrapper into `UiElement`.
 - [x] Extract template capture into `NativeUiTemplates`.
 - [x] Extract style copying into `UiStyles`.
 - [x] Extract rect/layout helpers into `UiLayout`.
 - [x] Extract clone/create helpers into `NativeUiFactory`.
 - [x] Extract common form composition into `NativeUiBuilder`.
-- [x] Keep `UILib` as a temporary compatibility facade.
-- [x] Migrate call sites from `UILib` to `SleddingUiAdapter`/native UI helpers.
+- [x] Remove the old `UILib` compatibility facade.
+- [x] Migrate call sites to `SleddingUiAdapter`/native UI helpers.
   - [x] Migrate settings menu view/controller layout, style, and create calls.
   - [x] Migrate lobby adapters/controller layout, style, and create calls.
-- [x] Remove unused `UILib` methods after migration.
+- [x] Remove unused native UI helper methods after migration.
 
 ## Documentation
 
