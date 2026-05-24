@@ -49,6 +49,7 @@ namespace MultiplayerTools.Patches
         }
 
         private static readonly Dictionary<int, (string Message, int Frame)> LastCommandBySource = new();
+        private static readonly Dictionary<int, string> LastExplicitCommandBySource = new();
         private static readonly HashSet<int> MotdRecipients = new();
         private static readonly Dictionary<int, int> TeleportRequests = new();
 
@@ -225,7 +226,20 @@ namespace MultiplayerTools.Patches
 
         private static bool TryHandleCommand(string message, int connectionId, bool isHostLocal)
         {
-            string[] parts = message.Trim().Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            string trimmedMessage = message.Trim();
+            if (trimmedMessage == "!!")
+            {
+                if (!LastExplicitCommandBySource.TryGetValue(connectionId, out string lastCommand) || string.IsNullOrWhiteSpace(lastCommand))
+                {
+                    BroadcastMessage(connectionId, "<#FA0>No previous command to repeat.");
+                    return true;
+                }
+
+                message = lastCommand;
+                trimmedMessage = lastCommand.Trim();
+            }
+
+            string[] parts = trimmedMessage.Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
             if (parts.Length == 0 || !Commands.TryGetValue(parts[0], out CommandDefinition command))
                 return false;
 
@@ -254,6 +268,9 @@ namespace MultiplayerTools.Patches
                 BroadcastMessage(connectionId, "<#F00>Command failed: player is not ready.");
                 return true;
             }
+
+            if (!string.Equals(trimmedMessage, "!!", StringComparison.Ordinal))
+                LastExplicitCommandBySource[connectionId] = trimmedMessage;
 
             try
             {
