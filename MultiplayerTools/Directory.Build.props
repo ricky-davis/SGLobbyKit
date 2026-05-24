@@ -7,7 +7,7 @@
     <GamePath Condition="'$(GamePath)' == '' and Exists('$(LinuxGamePath)')">$(LinuxGamePath)</GamePath>
     <GamePath Condition="'$(GamePath)' == ''">$(WindowsGamePath)</GamePath>
 
-    <DeployMod Condition="'$(DeployMod)' == '' and '$(OS)' == 'Windows_NT'">true</DeployMod>
+    <DeployMod Condition="'$(DeployMod)' == '' and Exists('$(GamePath)')">true</DeployMod>
     <DeployMod Condition="'$(DeployMod)' == ''">false</DeployMod>
   </PropertyGroup>
 </Project>
