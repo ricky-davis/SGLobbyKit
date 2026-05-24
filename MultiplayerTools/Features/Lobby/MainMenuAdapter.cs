@@ -18,21 +18,21 @@ namespace MultiplayerTools.Features.Lobby
 
             Transform oldQuickHostRow = menuLayout.Find("horizontal layout (quick host)");
             if (oldQuickHostRow != null)
-                UILib.Assume(oldQuickHostRow).DestroyImmediate();
+                SleddingUiAdapter.Assume(oldQuickHostRow).DestroyImmediate();
 
-            UILib.Assume(mainMenu.hostButton).Hide();
+            SleddingUiAdapter.Assume(mainMenu.hostButton).Hide();
 
             Button joinButton = mainMenu.joinButton ?? GameObject.Find(SleddingUiPaths.JoinButtonUpper)?.GetComponent<Button>();
             if (joinButton != null)
             {
-                UILib.Assume(joinButton)
+                SleddingUiAdapter.Assume(joinButton)
                     .SiblingIndex(0)
                     .Show()
                     .Layout(flexibleWidth: 1f, preferredWidth: -1f);
             }
 
             Button quitButton = mainMenu.quitButton ?? GameObject.Find(SleddingUiPaths.QuitButton)?.GetComponent<Button>();
-            UILib.SetButtonColors(quitButton, new Color(0.867f, 0.298f, 0.298f, 1f), new Color(0.298f, 0f, 0f, 1f));
+            UiStyles.SetButtonColors(quitButton, new Color(0.867f, 0.298f, 0.298f, 1f), new Color(0.298f, 0f, 0f, 1f));
 
             HorizontalLayoutGroup hostRowLayout = hostRow.GetComponent<HorizontalLayoutGroup>();
             if (hostRowLayout != null)
@@ -41,7 +41,7 @@ namespace MultiplayerTools.Features.Lobby
                 hostRowLayout.childForceExpandWidth = true;
             }
 
-            UILib.Assume(menuLayout)
+            SleddingUiAdapter.Assume(menuLayout)
                 .Scale(new Vector3(0.78f, 0.78f, 1f))
                 .Move(new Vector2(295f, 0f));
 

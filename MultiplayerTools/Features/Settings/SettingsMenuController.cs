@@ -166,25 +166,25 @@ namespace MultiplayerTools.Features.Settings
                 return;
             }
 
-            _confirmationRoot = UILib.Create("Unapplied Changes Confirmation", _root.transform).GameObject;
-            UILib.Stretch(_confirmationRoot);
+            _confirmationRoot = NativeUiFactory.Object("Unapplied Changes Confirmation", _root.transform).GameObject;
+            UiLayout.Stretch(_confirmationRoot);
 
-            Image backdrop = UILib.CreateScreenBackdrop(_confirmationRoot.transform, color: new Color(0f, 0f, 0f, 0.35f));
+            Image backdrop = NativeUiFactory.Backdrop(_confirmationRoot.transform, new Color(0f, 0f, 0f, 0.35f));
 
-            UILib.Element panel = UILib.CreatePanel(backdrop != null ? backdrop.transform : _confirmationRoot.transform, "Confirmation Panel");
+            UiElement panel = NativeUiFactory.Panel(backdrop != null ? backdrop.transform : _confirmationRoot.transform, "Confirmation Panel");
             panel.CenterAnchors().Resize(new Vector2(560f, 190f)).Move(Vector2.zero);
-            UILib.SetVerticalLayout(panel.GameObject, new RectOffset(26, 26, 22, 22), spacing: 14f);
+            UiLayout.SetVertical(panel.GameObject, new RectOffset(26, 26, 22, 22), spacing: 14f);
 
-            TMP_Text title = NativeUiFactory.Label(panel.Transform, "Unapplied Changes", "Confirmation Title", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
-            UILib.SetTextMetrics(title, 20f, TextAlignmentOptions.Center);
+            TMP_Text title = NativeUiFactory.Label(panel.Transform, "Unapplied Changes", "Confirmation Title", NativeUiTemplates.Current.HeaderLabel ?? NativeUiTemplates.Current.Label);
+            UiStyles.SetTextMetrics(title, 20f, TextAlignmentOptions.Center);
             title.color = Color.white;
             title.fontStyle = FontStyles.Bold;
-            UILib.SetFixedLayoutSize(title.gameObject, flexibleWidth: 1f, preferredHeight: 34f);
+            UiLayout.SetFixedSize(title.gameObject, flexibleWidth: 1f, preferredHeight: 34f);
 
-            TMP_Text body = NativeUiFactory.Label(panel.Transform, "Apply your changes before closing?", "Confirmation Body", UILib.Defaults.Label);
-            UILib.SetTextMetrics(body, 15f, TextAlignmentOptions.Center, autoSize: true, minFontSize: 12f);
+            TMP_Text body = NativeUiFactory.Label(panel.Transform, "Apply your changes before closing?", "Confirmation Body", NativeUiTemplates.Current.Label);
+            UiStyles.SetTextMetrics(body, 15f, TextAlignmentOptions.Center, autoSize: true, minFontSize: 12f);
             body.color = Color.white;
-            UILib.SetFixedLayoutSize(body.gameObject, flexibleWidth: 1f, preferredHeight: 38f);
+            UiLayout.SetFixedSize(body.gameObject, flexibleWidth: 1f, preferredHeight: 38f);
 
             GameObject row = NativeUiBuilder.HorizontalRow(panel.Transform, "Confirmation Actions", height: 36f, spacing: 10f).GameObject;
             HorizontalLayoutGroup rowLayout = row.GetComponent<HorizontalLayoutGroup>();
@@ -193,16 +193,16 @@ namespace MultiplayerTools.Features.Settings
                 rowLayout.childControlHeight = false;
                 rowLayout.childForceExpandHeight = false;
             }
-            UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 36f);
+            UiLayout.SetFixedSize(row, flexibleWidth: 1f, preferredHeight: 36f);
 
             Button applyClose = CreateNativeButton(row.transform, "Apply & Close", (UnityEngine.Events.UnityAction)ApplyAndClose, "Apply & Close");
-            UILib.SetFixedLayoutSize(applyClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
+            UiLayout.SetFixedSize(applyClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
 
             Button discardClose = CreateNativeButton(row.transform, "Discard & Close", (UnityEngine.Events.UnityAction)DiscardAndClose, "Discard & Close");
-            UILib.SetFixedLayoutSize(discardClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
+            UiLayout.SetFixedSize(discardClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
 
             Button cancel = CreateNativeButton(row.transform, "Cancel", (UnityEngine.Events.UnityAction)(() => _confirmationRoot?.SetActive(false)), "Cancel");
-            UILib.SetFixedLayoutSize(cancel.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
+            UiLayout.SetFixedSize(cancel.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
         }
 
         private static Button CreateNativeButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick, string name)

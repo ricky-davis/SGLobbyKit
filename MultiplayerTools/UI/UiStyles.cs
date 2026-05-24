@@ -11,6 +11,11 @@ namespace MultiplayerTools
             UILib.ApplyTextStyle(target, template);
         }
 
+        public static void SetText(TMP_Text target, string text, bool removeLocalization = true)
+        {
+            UILib.SetText(target, text, removeLocalization);
+        }
+
         public static void ApplyButton(Button button, Button template = null)
         {
             UILib.ApplyButtonStyle(button, template);
@@ -21,6 +26,11 @@ namespace MultiplayerTools
             UILib.ApplyToggleStyle(toggle, template);
         }
 
+        public static void SetButtonColors(Button button, Color imageColor, Color shadowColor)
+        {
+            UILib.SetButtonColors(button, imageColor, shadowColor);
+        }
+
         public static Image CopyImage(Image template, GameObject target)
         {
             return UILib.CopyImage(template, target);
@@ -29,11 +39,6 @@ namespace MultiplayerTools
         public static Shadow CopyShadow(Shadow template, GameObject target)
         {
             return UILib.CopyShadow(template, target);
-        }
-
-        public static LayoutElement CopyLayout(LayoutElement template, GameObject target)
-        {
-            return UILib.CopyLayout(template, target);
         }
 
         public static void SetTextMetrics(

@@ -16,11 +16,11 @@
 
 ## Verify Soon
 
-- [ ] Smoke-test `!settings` in-game.
-- [ ] Verify `Apply` keeps the settings window open and saves preferences.
-- [ ] Verify `Apply & Close` saves preferences and closes.
-- [ ] Verify `X`/Escape prompts only when there are unapplied changes.
-- [ ] Verify confirmation actions: `Apply & Close`, `Discard & Close`, `Cancel`.
+- [x] Smoke-test `!settings` in-game.
+- [x] Verify `Apply` keeps the settings window open and saves preferences.
+- [x] Verify `Apply & Close` saves preferences and closes.
+- [x] Verify `X`/Escape prompts only when there are unapplied changes.
+- [x] Verify confirmation actions: `Apply & Close`, `Discard & Close`, `Cancel`.
 - [ ] Verify settings parent resolution from main menu, pause menu, active game, and lobby.
 
 ## Lobby Rewrite
@@ -54,11 +54,13 @@
 - [x] Extract clone/create helpers into `NativeUiFactory`.
 - [x] Extract common form composition into `NativeUiBuilder`.
 - [x] Keep `UILib` as a temporary compatibility facade.
-- [ ] Migrate call sites from `UILib` to `SleddingUiAdapter`/native UI helpers.
+- [x] Migrate call sites from `UILib` to `SleddingUiAdapter`/native UI helpers.
+  - [x] Migrate settings menu view/controller layout, style, and create calls.
+  - [x] Migrate lobby adapters/controller layout, style, and create calls.
 - [ ] Remove or obsolete unused `UILib` methods after migration.
 
 ## Documentation
 
 - [x] Update `docs/rewrite-analysis/functionality-inventory.md` after each behavior-changing slice.
-- [ ] Update `docs/rewrite-analysis/parity-checklist.md` as parity checks are completed.
+- [x] Update `docs/rewrite-analysis/parity-checklist.md` as parity checks are completed.
 - [ ] Add ADR only for hard-to-reverse, surprising trade-off decisions.

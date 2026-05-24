@@ -31,8 +31,8 @@ namespace MultiplayerTools.Features.Lobby
             if (createLobbyRoot == null)
                 return null;
 
-            UILib.Assume(createLobbyRoot).Show();
-            UILib.SetChildrenActive(createLobbyRoot, true, skipNameContains: SleddingUiPaths.BackgroundFadeNameContains);
+            SleddingUiAdapter.Assume(createLobbyRoot).Show();
+            UiLayout.SetChildrenActive(createLobbyRoot, true, skipNameContains: SleddingUiPaths.BackgroundFadeNameContains);
             for (int i = 0; i < createLobbyRoot.childCount; i++)
             {
                 Transform child = createLobbyRoot.GetChild(i);
@@ -40,20 +40,20 @@ namespace MultiplayerTools.Features.Lobby
                     continue;
 
                 if (child.name.Contains(SleddingUiPaths.PanelsNameContains))
-                    UILib.SetChildrenActive(child, true, skipNameContains: SleddingUiPaths.EditorNameContains);
+                    UiLayout.SetChildrenActive(child, true, skipNameContains: SleddingUiPaths.EditorNameContains);
             }
 
             UICreateLobby createLobby = createLobbyRoot.GetComponent<UICreateLobby>()
                 ?? createLobbyRoot.GetComponentInChildren<UICreateLobby>(true);
             if (createLobby != null)
             {
-                UILib.ActivatePathToRoot(createLobby.transform, createLobbyRoot);
+                UiLayout.ActivatePathToRoot(createLobby.transform, createLobbyRoot);
 
                 if (showPanel)
                     createLobby.ShowPanel();
             }
 
-            UILib.SetCanvasGroups(createLobbyRoot, alpha: 1f, interactable: true, blocksRaycasts: true);
+            UiLayout.SetCanvasGroups(createLobbyRoot, alpha: 1f, interactable: true, blocksRaycasts: true);
 
             return createLobby;
         }

@@ -64,7 +64,7 @@ namespace MultiplayerTools.Features.Lobby
                     return;
                 }
 
-                UILib.Assume(createLobbyRoot)
+                SleddingUiAdapter.Assume(createLobbyRoot)
                     .Reparent(menuPanel)
                     .LastSibling()
                     .CenterAnchors()
@@ -91,13 +91,13 @@ namespace MultiplayerTools.Features.Lobby
             bool needsInput = _customLobbyNameInput == null || _customLobbyNameInput.transform.parent != layoutParent;
             if (!needsInput)
             {
-                UILib.Assume(_customLobbyNameInput).Show();
-                UILib.Assume((GameObject)lobbyNameText.gameObject).Hide();
+                SleddingUiAdapter.Assume(_customLobbyNameInput).Show();
+                SleddingUiAdapter.Assume((GameObject)lobbyNameText.gameObject).Hide();
                 return;
             }
 
             int labelIndex = lobbyNameText.transform.GetSiblingIndex();
-            TMP_InputField input = UILib.CloneInputField(
+            TMP_InputField input = NativeUiFactory.InputFromTemplate(
                 (TMP_InputField)passwordInput,
                 layoutParent,
                 name: "CustomLobbyNameInput",
@@ -105,14 +105,14 @@ namespace MultiplayerTools.Features.Lobby
             if (input == null)
                 return;
 
-            UILib.SetRect(input, sizeDelta: new Vector2(473.99f, 47.04f), scale: Vector3.one);
+            UiLayout.SetRect(input, sizeDelta: new Vector2(473.99f, 47.04f), scale: Vector3.one);
             input.characterLimit = 64;
             input.lineLimit = 1;
             input.lineType = TMP_InputField.LineType.SingleLine;
             input.contentType = TMP_InputField.ContentType.Standard;
             input.inputType = TMP_InputField.InputType.Standard;
             input.interactable = true;
-            UILib.SetInputTextStyle(input, 18f, autoSize: true, minFontSize: 12f);
+            UiStyles.SetInputTextStyle(input, 18f, autoSize: true, minFontSize: 12f);
 
             input.onValueChanged.AddListener((UnityEngine.Events.UnityAction<string>)((text) =>
             {
@@ -126,10 +126,10 @@ namespace MultiplayerTools.Features.Lobby
 
             TMP_Text placeholderText = input.placeholder?.GetComponent<TMP_Text>();
             if (placeholderText != null)
-                UILib.SetText(placeholderText, "Lobby name...");
+                UiStyles.SetText(placeholderText, "Lobby name...");
 
-            UILib.Assume((GameObject)lobbyNameText.gameObject).Hide();
-            UILib.Assume(input).Show();
+            SleddingUiAdapter.Assume((GameObject)lobbyNameText.gameObject).Hide();
+            SleddingUiAdapter.Assume(input).Show();
             _customLobbyNameInput = input;
         }
 
@@ -237,7 +237,7 @@ namespace MultiplayerTools.Features.Lobby
                 return;
             }
 
-            Toggle toggle = UILib.CloneToggle(
+            Toggle toggle = NativeUiFactory.ToggleFromTemplate(
                 textChatOnlyToggle,
                 textChatOnlyToggle.transform.parent,
                 name: "EnableGuestBangCommandsToggle",
@@ -251,7 +251,7 @@ namespace MultiplayerTools.Features.Lobby
             if (toggle == null)
                 return;
 
-            UILib.Assume(toggle).Show();
+            SleddingUiAdapter.Assume(toggle).Show();
             _enableGuestBangCommandsToggle = toggle;
         }
 

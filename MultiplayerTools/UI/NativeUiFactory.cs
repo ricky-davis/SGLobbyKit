@@ -8,14 +8,14 @@ namespace MultiplayerTools
 {
     internal static class NativeUiFactory
     {
+        public static UiElement Object(string name, Transform parent = null)
+        {
+            return UILib.Create(name, parent);
+        }
+
         public static TMP_Text Label(Transform parent, string text, string name = "Label", TMP_Text template = null)
         {
             return UILib.CreatePlainLabel(parent, text, name, template);
-        }
-
-        public static Button Button(Transform parent, string label, UnityAction onClick = null, string name = "Button")
-        {
-            return UILib.CloneButton(NativeUiTemplates.Current.Button, parent, name, label, onClick);
         }
 
         public static TMP_InputField Input(
@@ -31,6 +31,17 @@ namespace MultiplayerTools
             return input;
         }
 
+        public static TMP_InputField InputFromTemplate(
+            TMP_InputField template,
+            Transform parent,
+            string text = null,
+            string placeholder = null,
+            string name = "Input Field",
+            int? siblingIndex = null)
+        {
+            return UILib.CloneInputField(template, parent, name, text, placeholder, siblingIndex);
+        }
+
         public static Toggle Toggle(
             Transform parent,
             string label,
@@ -39,6 +50,18 @@ namespace MultiplayerTools
             string name = "Toggle")
         {
             return UILib.CloneToggle(NativeUiTemplates.Current.Toggle, parent, name, label, isOn, onValueChanged);
+        }
+
+        public static Toggle ToggleFromTemplate(
+            Toggle template,
+            Transform parent,
+            string label,
+            bool isOn,
+            UnityAction<bool> onValueChanged = null,
+            string name = "Toggle",
+            int? siblingIndex = null)
+        {
+            return UILib.CloneToggle(template, parent, name, label, isOn, onValueChanged, siblingIndex);
         }
 
         public static MySliderUI Slider(
@@ -52,11 +75,6 @@ namespace MultiplayerTools
             return UILib.CreateSlider(parent, name, NativeUiTemplates.Current.Slider, minValue, maxValue, value, onValueChanged);
         }
 
-        public static Scrollbar Scrollbar(Transform parent, string name = "Scrollbar")
-        {
-            return UILib.CreateScrollbar(parent, name, NativeUiTemplates.Current.Scrollbar);
-        }
-
         public static UiElement Panel(Transform parent, string name = "Panel")
         {
             return UILib.CreatePanel(parent, name);
@@ -65,6 +83,11 @@ namespace MultiplayerTools
         public static Image Backdrop(Transform parent, Image template = null)
         {
             return UILib.CreateScreenBackdrop(parent, template: template);
+        }
+
+        public static Image Backdrop(Transform parent, Color color)
+        {
+            return UILib.CreateScreenBackdrop(parent, color: color);
         }
 
         public static UILib.ScrollViewportResult ScrollView(Transform parent, string name = "Scroll Viewport")

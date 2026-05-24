@@ -990,8 +990,6 @@ namespace MultiplayerTools
 
             RectTransform[] tracks = new RectTransform[trackWidths.Length];
             float x = padding != null ? padding.left : 0f;
-            float availableWidth = 1f;
-            float totalFixedWidth = 0f;
             float totalFlexible = 0f;
             float spacingTotal = spacing * Math.Max(0, trackWidths.Length - 1);
 
