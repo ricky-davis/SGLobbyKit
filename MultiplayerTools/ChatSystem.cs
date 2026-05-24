@@ -9,6 +9,7 @@ using Il2CppDissonance.Integrations.FishNet;
 using Il2Cpp_Scripts.Player;
 using Il2Cpp_Scripts.Systems.Chat;
 using MelonLoader;
+using MultiplayerTools.Features.Settings;
 using UnityEngine;
 using System.Text.RegularExpressions;
 
@@ -68,7 +69,7 @@ namespace MultiplayerTools.Patches
                 "Enable or disable guest bang commands.",
                 hostCommand: true),
             ["!settings"] = new CommandDefinition(
-                SettingsCommand.HandleCommand,
+                OpenSettingsMenu,
                 "!settings",
                 "Open MultiplayerTools settings.",
                 hostCommand: true),
@@ -90,6 +91,11 @@ namespace MultiplayerTools.Patches
                 "Force a player to Teleport to you.",
                 hostCommand: true)
         };
+
+        private static void OpenSettingsMenu(PlayerControl playerControl, string args)
+        {
+            SettingsMenuController.Instance.Open(SettingsMenuView.Build, SettingsMenuView.HasRequiredTemplates);
+        }
 
         [HarmonyPatch(typeof(ChatManager), "ProcessChatInput")]
         [HarmonyPrefix]

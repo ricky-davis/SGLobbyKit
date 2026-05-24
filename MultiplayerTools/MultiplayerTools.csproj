@@ -616,8 +616,6 @@
 
 	<ItemGroup>
     <Compile Include="MultiplayerToolsCore.cs" />
-    <Compile Include="LobbyPatchFeatures.cs" />
-    <Compile Include="SettingsCommand.cs" />
     <Compile Include="UI/NativeUiBackend.cs" />
     <Compile Include="UI/SleddingUiAdapter.cs" />
     <Compile Include="UI/SleddingUiPaths.cs" />
@@ -635,10 +633,12 @@
     <Compile Include="Features/Settings/SettingsMenuHandle.cs" />
     <Compile Include="Features/Settings/SettingsMenuController.cs" />
     <Compile Include="Features/Settings/SettingsMenuView.cs" />
+    <Compile Include="Features/Settings/SettingsPatches.cs" />
     <Compile Include="Features/Lobby/LobbyUiController.cs" />
     <Compile Include="Features/Lobby/MainMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
+    <Compile Include="Features/Lobby/LobbyPatches.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
 		<Content Include="Directory.Build.props" />

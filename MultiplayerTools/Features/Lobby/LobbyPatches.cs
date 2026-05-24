@@ -1,5 +1,4 @@
 using HarmonyLib;
-using Il2Cpp;
 using Il2CppPlayEveryWare.EpicOnlineServices.Samples;
 using Il2Cpp_Scripts.Managers;
 using Il2Cpp_Scripts.UI.Pre_Game;

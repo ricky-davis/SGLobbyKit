@@ -32,6 +32,8 @@ namespace MultiplayerTools.Features.Settings
         private static readonly Color NormalButtonShadowColor = new Color(13f / 255f, 85f / 255f, 132f / 255f, 1f);
         private static readonly Color DirtyButtonColor = new Color(108f / 255f, 99f / 255f, 184f / 255f, 1f);
         private static readonly Color DirtyButtonShadowColor = new Color(65f / 255f, 60f / 255f, 112f / 255f, 1f);
+        private static readonly Color CloseButtonColor = new Color(0.827f, 0.184f, 0.184f, 1f);
+        private static readonly Color CloseButtonShadowColor = new Color(0.440f, 0f, 0f, 1f);
 
         private static GameObject _firstSelectable;
 
@@ -184,7 +186,15 @@ namespace MultiplayerTools.Features.Settings
             if (!addCloseButton)
                 return;
 
-            Button closeButton = CreateSettingsButton(row.transform, "X", (UnityAction)CloseButtonOnClick, "Close", CloseButtonFontSize, new Vector2(25f, 25f));
+            Button closeButton = CreateSettingsButton(
+                row.transform,
+                "X",
+                (UnityAction)CloseButtonOnClick,
+                "Close",
+                CloseButtonFontSize,
+                new Vector2(25f, 25f),
+                CloseButtonColor,
+                CloseButtonShadowColor);
             _firstSelectable = closeButton.gameObject;
             UiLayout.SetFixedSize(closeButton.gameObject, preferredWidth: 25f, preferredHeight: 25f);
         }
@@ -363,7 +373,15 @@ namespace MultiplayerTools.Features.Settings
                 UiLayout.StabilizeClonedControl(toggle.gameObject);
         }
 
-        internal static Button CreateSettingsButton(Transform parent, string label, UnityAction onClick, string name, float fontSize, Vector2 size)
+        internal static Button CreateSettingsButton(
+            Transform parent,
+            string label,
+            UnityAction onClick,
+            string name,
+            float fontSize,
+            Vector2 size,
+            Color? imageColor = null,
+            Color? shadowColor = null)
         {
             GameObject buttonObject = NativeUiFactory.Object(name, parent).GameObject;
             UiLayout.SetRect(
@@ -379,10 +397,10 @@ namespace MultiplayerTools.Features.Settings
             Image image = UiStyles.CopyImage(templates.Button != null ? templates.Button.GetComponent<Image>() : templates.Background, buttonObject);
             Shadow shadow = UiStyles.CopyShadow(templates.Button != null ? templates.Button.GetComponent<Shadow>() : templates.Shadow, buttonObject);
             if (image != null)
-                image.color = NormalButtonColor;
+                image.color = imageColor ?? NormalButtonColor;
             if (shadow != null)
             {
-                shadow.effectColor = NormalButtonShadowColor;
+                shadow.effectColor = shadowColor ?? NormalButtonShadowColor;
                 shadow.effectDistance *= 0.55f;
             }
             Button button = buttonObject.AddComponent<Button>();
