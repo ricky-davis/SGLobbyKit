@@ -60,6 +60,11 @@ namespace MultiplayerTools.Patches
                 "!help [command]",
                 "Shows available commands or details for one command.",
                 hiddenFromHelp: true),
+            ["!settings"] = new CommandDefinition(
+                OpenSettingsMenu,
+                "!settings",
+                "Open MultiplayerTools settings.",
+                hostCommand: true),
             [MotdCommand] = new CommandDefinition(
                 HandleMotdCommand,
                 "!motd [message]",
@@ -68,11 +73,6 @@ namespace MultiplayerTools.Patches
                 HandleBangCommandsCommand,
                 "!bc <on|off>",
                 "Enable or disable guest bang commands.",
-                hostCommand: true),
-            ["!settings"] = new CommandDefinition(
-                OpenSettingsMenu,
-                "!settings",
-                "Open MultiplayerTools settings.",
                 hostCommand: true),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
@@ -452,6 +452,7 @@ namespace MultiplayerTools.Patches
 
         private static void HandleHelpCommand(PlayerControl playerControl, string args)
         {
+            string helpSizing = "<size=75%>";
             if (!string.IsNullOrWhiteSpace(args))
             {
                 string requested = args.Trim();
@@ -459,18 +460,18 @@ namespace MultiplayerTools.Patches
                     requested = "!" + requested;
 
                 if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(requested, command, playerControl))
-                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(command)} - {command.Description}");
+                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(command)} - {command.Description}");
                 else
-                    Reply(playerControl, $"<#FA0>Unknown command: {requested}");
+                    Reply(playerControl, $"{helpSizing}<#FA0>Unknown command: {requested}");
 
                 return;
             }
 
-            Reply(playerControl, "<#7FF>Available commands:");
+            Reply(playerControl, $"{helpSizing}<#7FF>Available commands:");
             foreach (var entry in Commands)
             {
                 if (CanShowInHelp(entry.Key, entry.Value, playerControl))
-                    Reply(playerControl, $"<#7FF>{FormatCommandUsage(entry.Value)}");
+                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(entry.Value)}");
             }
         }
 
