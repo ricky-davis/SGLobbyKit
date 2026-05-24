@@ -92,6 +92,7 @@ namespace MultiplayerTools.Features.Settings
 
             _draft.Apply();
             _cleanDraft = _draft.Clone();
+            SettingsMenuView.RefreshToggleState(_root, "Enable Guest !Bang Commands", _draft.EnableGuestBangCommands);
             NotifyDirtyStateChanged();
         }
 

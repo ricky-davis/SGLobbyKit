@@ -85,30 +85,30 @@ namespace MultiplayerTools.Features.Settings
                 contentLayout.padding.bottom = ScrollBottomPadding;
             }
 
-            AddSchemaField(content, SettingsSchema.LobbySimpleFields[0], draft);
-            AddCapacitySlider(content, draft);
-            AddSchemaField(content, SettingsSchema.LobbySimpleFields[1], draft);
+            // AddSchemaField(content, SettingsSchema.LobbySimpleFields[0], draft);
+            // AddCapacitySlider(content, draft);
+            // AddSchemaField(content, SettingsSchema.LobbySimpleFields[1], draft);
 
-            RectTransform passwordInputTrack = null;
-            AddGridRow(content, MessageRowHeight, 0f, new[] { 3f, 4f }, cells =>
-            {
-                AddToggle(
-                    cells[0],
-                    "Password Protected",
-                    draft.IsPasswordProtected,
-                    value => draft.IsPasswordProtected = value,
-                    labelOffsetX: 17f,
-                    anchoredPosition: new Vector2(0f, -MessageRowHeight * 0.5f));
-                passwordInputTrack = cells[1]?.GetComponent<RectTransform>();
-                AddInput(cells[1], string.Empty, draft.LobbyPassword, value => draft.LobbyPassword = value ?? string.Empty, placeholderText: "enter password...");
-            });
-            if (passwordInputTrack != null)
-                passwordInputTrack.offsetMin = new Vector2(308f, passwordInputTrack.offsetMin.y);
+            // RectTransform passwordInputTrack = null;
+            // AddGridRow(content, MessageRowHeight, 0f, new[] { 3f, 4f }, cells =>
+            // {
+            //     AddToggle(
+            //         cells[0],
+            //         "Password Protected",
+            //         draft.IsPasswordProtected,
+            //         value => draft.IsPasswordProtected = value,
+            //         labelOffsetX: 17f,
+            //         anchoredPosition: new Vector2(0f, -MessageRowHeight * 0.5f));
+            //     passwordInputTrack = cells[1]?.GetComponent<RectTransform>();
+            //     AddInput(cells[1], string.Empty, draft.LobbyPassword, value => draft.LobbyPassword = value ?? string.Empty, placeholderText: "enter password...");
+            // });
+            // if (passwordInputTrack != null)
+            //     passwordInputTrack.offsetMin = new Vector2(308f, passwordInputTrack.offsetMin.y);
 
-            AddSchemaField(content, SettingsSchema.LobbySimpleFields[2], draft);
-            AddSchemaField(content, SettingsSchema.LobbySimpleFields[3], draft);
-            AddDivider(content);
-            AddHeader(content, "Mod Settings", textScale: 0.7f, rowHeight: SectionHeaderHeight);
+            // AddSchemaField(content, SettingsSchema.LobbySimpleFields[2], draft);
+            // AddSchemaField(content, SettingsSchema.LobbySimpleFields[3], draft);
+            // AddDivider(content);
+            // AddHeader(content, "Mod Settings", textScale: 0.7f, rowHeight: SectionHeaderHeight);
             foreach (SettingsField field in SettingsSchema.ModSimpleFields)
                 AddSchemaField(content, field, draft);
             AddMessageRow(
@@ -347,6 +347,7 @@ namespace MultiplayerTools.Features.Settings
                 parent,
                 label: label,
                 isOn: value,
+                name: label,
                 onValueChanged: (UnityAction<bool>)((isOn) =>
                 {
                     setter(isOn);
@@ -506,6 +507,26 @@ namespace MultiplayerTools.Features.Settings
                     anchoredPosition: new Vector2(0f, -MessageRowHeight * 0.5f));
                 CreateSizeSlider(cells[1], sizeValue, setSize);
             });
+        }
+
+        public static void RefreshToggleState(GameObject root, string toggleName, bool isOn)
+        {
+            if (root == null || string.IsNullOrEmpty(toggleName))
+                return;
+
+            Toggle[] toggles = root.GetComponentsInChildren<Toggle>(true);
+            for (int i = 0; i < toggles.Length; i++)
+            {
+                Toggle toggle = toggles[i];
+                if (toggle == null)
+                    continue;
+
+                if (string.Equals(toggle.gameObject.name, toggleName, StringComparison.Ordinal))
+                {
+                    toggle.SetIsOnWithoutNotify(isOn);
+                    return;
+                }
+            }
         }
 
         private static MySliderUI CreateSizeSlider(Transform parent, int sizeValue, Action<int> setSize)

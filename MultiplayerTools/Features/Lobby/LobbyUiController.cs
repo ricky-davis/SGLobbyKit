@@ -248,33 +248,33 @@ namespace MultiplayerTools.Features.Lobby
                 Toggle privateToggle = group != null && group.m_Toggles.Count > 0 ? group.m_Toggles[0] : null;
                 Toggle targetToggle = MultiplayerToolsCore.IsPublicLobby ? publicLobbyToggle : privateToggle;
                 if (targetToggle != null)
-                    targetToggle.isOn = true;
+                    targetToggle.SetIsOnWithoutNotify(true);
             }
 
             Toggle passwordProtectedToggle = createLobby.passwordProtectedToggle;
             if (passwordProtectedToggle != null)
-                passwordProtectedToggle.isOn = MultiplayerToolsCore.IsPasswordProtected;
+                passwordProtectedToggle.SetIsOnWithoutNotify(MultiplayerToolsCore.IsPasswordProtected);
 
             TMP_InputField passwordInputField = createLobby.passwordInputField;
             if (passwordInputField != null)
-                passwordInputField.text = MultiplayerToolsCore.LobbyPassword;
+                passwordInputField.SetTextWithoutNotify(MultiplayerToolsCore.LobbyPassword);
 
             Toggle peacefulModeToggle = createLobby.peacefulModeToggle;
             if (peacefulModeToggle != null)
-                peacefulModeToggle.isOn = MultiplayerToolsCore.IsPeacefulMode;
+                peacefulModeToggle.SetIsOnWithoutNotify(MultiplayerToolsCore.IsPeacefulMode);
 
             if (textChatOnlyToggle != null)
-                textChatOnlyToggle.isOn = MultiplayerToolsCore.IsTextChatOnly;
+                textChatOnlyToggle.SetIsOnWithoutNotify(MultiplayerToolsCore.IsTextChatOnly);
 
             if (_enableGuestBangCommandsToggle != null)
-                _enableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                _enableGuestBangCommandsToggle.SetIsOnWithoutNotify(MultiplayerToolsCore.EnableGuestBangCommands);
         }
 
         private void EnsureGuestBangCommandsToggle(Toggle textChatOnlyToggle)
         {
             if (_enableGuestBangCommandsToggle != null)
             {
-                _enableGuestBangCommandsToggle.isOn = MultiplayerToolsCore.EnableGuestBangCommands;
+                _enableGuestBangCommandsToggle.SetIsOnWithoutNotify(MultiplayerToolsCore.EnableGuestBangCommands);
                 return;
             }
 
