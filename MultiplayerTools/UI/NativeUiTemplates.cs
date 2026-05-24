@@ -6,10 +6,6 @@ namespace MultiplayerTools
     {
         public static UILib.DefaultReferences Current => UILib.Defaults;
 
-        public static bool HasAny => UILib.HasDefaults;
-
-        public static bool HasCore => UILib.HasCoreDefaults;
-
         public static void CaptureScene(bool overwriteExisting = false)
         {
             UILib.CaptureSceneDefaults(overwriteExisting);
@@ -20,9 +16,5 @@ namespace MultiplayerTools
             UILib.CaptureDefaultsFrom(root, overwriteExisting);
         }
 
-        public static void Clear()
-        {
-            UILib.ClearDefaults();
-        }
     }
 }

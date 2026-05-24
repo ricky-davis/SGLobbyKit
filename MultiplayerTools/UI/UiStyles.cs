@@ -16,16 +16,6 @@ namespace MultiplayerTools
             UILib.SetText(target, text, removeLocalization);
         }
 
-        public static void ApplyButton(Button button, Button template = null)
-        {
-            UILib.ApplyButtonStyle(button, template);
-        }
-
-        public static void ApplyToggle(Toggle toggle, Toggle template = null)
-        {
-            UILib.ApplyToggleStyle(toggle, template);
-        }
-
         public static void SetButtonColors(Button button, Color imageColor, Color shadowColor)
         {
             UILib.SetButtonColors(button, imageColor, shadowColor);

@@ -2,7 +2,6 @@ using Il2Cpp;
 using Il2CppTMPro;
 using UnityEngine;
 using UnityEngine.Events;
-using UnityEngine.EventSystems;
 using UnityEngine.Localization.Components;
 using UnityEngine.UI;
 using Object = UnityEngine.Object;
@@ -13,7 +12,6 @@ namespace MultiplayerTools
     {
         private static int _lastAutoCaptureFrame = -1;
         private static readonly Color FallbackPanelColor = new Color(0.09f, 0.5f, 0.74f, 0.97f);
-        private static readonly Color FallbackButtonColor = new Color(0.09f, 0.62f, 0.82f, 1f);
         private static readonly Color FallbackInputColor = new Color(0.95f, 0.96f, 0.98f, 1f);
         private static readonly Color FallbackToggleCheckColor = new Color(0.17f, 0.74f, 0.45f, 1f);
 
@@ -45,52 +43,7 @@ namespace MultiplayerTools
         }
 
         public static DefaultReferences Defaults { get; } = new DefaultReferences();
-        public static bool AutoCaptureSceneDefaults { get; set; } = true;
-
-        public static bool HasDefaults =>
-            Defaults.Button != null ||
-            Defaults.Label != null ||
-            Defaults.HeaderLabel != null ||
-            Defaults.ButtonLabel != null ||
-            Defaults.ToggleLabel != null ||
-            Defaults.SliderLabel != null ||
-            Defaults.InputText != null ||
-            Defaults.InputPlaceholder != null ||
-            Defaults.InputField != null ||
-            Defaults.Toggle != null ||
-            Defaults.Slider != null ||
-            Defaults.Scrollbar != null ||
-            Defaults.Background != null ||
-            Defaults.Shadow != null ||
-            Defaults.Panel != null;
-
-        public static bool HasCoreDefaults =>
-            Defaults.Button != null &&
-            Defaults.Label != null &&
-            Defaults.InputField != null &&
-            Defaults.Toggle != null;
-
-        public static void ClearDefaults()
-        {
-            Defaults.Button = null;
-            Defaults.Label = null;
-            Defaults.HeaderLabel = null;
-            Defaults.ButtonLabel = null;
-            Defaults.ToggleLabel = null;
-            Defaults.SliderLabel = null;
-            Defaults.InputText = null;
-            Defaults.InputPlaceholder = null;
-            Defaults.InputField = null;
-            Defaults.Toggle = null;
-            Defaults.Slider = null;
-            Defaults.Scrollbar = null;
-            Defaults.Background = null;
-            Defaults.Shadow = null;
-            Defaults.Panel = null;
-            _lastAutoCaptureFrame = -1;
-        }
-
-        public static void SetDefaults(DefaultReferences references, bool overwriteExisting = true)
+        private static void SetDefaults(DefaultReferences references, bool overwriteExisting = true)
         {
             if (references == null)
                 return;
@@ -112,62 +65,11 @@ namespace MultiplayerTools
             Defaults.Panel = PickDefault(Defaults.Panel, references.Panel, overwriteExisting);
         }
 
-        public static void SetDefault(Button template, bool overwriteExisting = true)
+        private static void SetDefault(Button template, bool overwriteExisting = true)
         {
             Defaults.Button = PickDefault(Defaults.Button, template, overwriteExisting);
             Defaults.ButtonLabel = PickDefault(Defaults.ButtonLabel, template != null ? template.GetComponentInChildren<TMP_Text>(true) : null, overwriteExisting);
             Defaults.Shadow = PickDefault(Defaults.Shadow, template != null ? template.GetComponent<Shadow>() : null, overwriteExisting);
-        }
-
-        public static void SetDefault(TMP_Text template, bool overwriteExisting = true)
-        {
-            Defaults.Label = PickDefault(Defaults.Label, template, overwriteExisting);
-        }
-
-        public static void SetDefault(TMP_InputField template, bool overwriteExisting = true)
-        {
-            Defaults.InputField = PickDefault(Defaults.InputField, template, overwriteExisting);
-            Defaults.InputText = PickDefault(Defaults.InputText, template != null ? template.textComponent : null, overwriteExisting);
-            Defaults.InputPlaceholder = PickDefault(Defaults.InputPlaceholder, template != null && template.placeholder != null ? template.placeholder.GetComponent<TMP_Text>() : null, overwriteExisting);
-        }
-
-        public static void SetDefault(Toggle template, bool overwriteExisting = true)
-        {
-            Defaults.Toggle = PickDefault(Defaults.Toggle, template, overwriteExisting);
-            Defaults.ToggleLabel = PickDefault(Defaults.ToggleLabel, template != null ? template.GetComponentInChildren<TMP_Text>(true) : null, overwriteExisting);
-        }
-
-        public static void SetDefault(MySliderUI template, bool overwriteExisting = true)
-        {
-            Defaults.Slider = PickDefault(Defaults.Slider, template, overwriteExisting);
-            Defaults.SliderLabel = PickDefault(Defaults.SliderLabel, template != null ? template.GetComponentInChildren<TMP_Text>(true) : null, overwriteExisting);
-        }
-
-        public static void SetDefault(Scrollbar template, bool overwriteExisting = true)
-        {
-            Defaults.Scrollbar = PickDefault(Defaults.Scrollbar, template, overwriteExisting);
-        }
-
-        public static void SetDefault(Image template, bool overwriteExisting = true)
-        {
-            Defaults.Background = PickDefault(Defaults.Background, template, overwriteExisting);
-        }
-
-        public static void SetDefault(Shadow template, bool overwriteExisting = true)
-        {
-            Defaults.Shadow = PickDefault(Defaults.Shadow, template, overwriteExisting);
-        }
-
-        public static void SetPanelDefault(GameObject template, bool overwriteExisting = true)
-        {
-            Image background = template != null
-                ? template.GetComponent<Image>() ?? FindBackgroundImage(template.transform)
-                : null;
-            Shadow shadow = background != null ? background.GetComponent<Shadow>() : template != null ? template.GetComponent<Shadow>() : null;
-
-            Defaults.Panel = PickDefault(Defaults.Panel, background != null ? background.gameObject : template, overwriteExisting);
-            Defaults.Background = PickDefault(Defaults.Background, background, overwriteExisting);
-            Defaults.Shadow = PickDefault(Defaults.Shadow, shadow, overwriteExisting);
         }
 
         public static void CaptureDefaultsFrom(Transform root, bool overwriteExisting = false)
@@ -246,15 +148,6 @@ namespace MultiplayerTools
             return new Element(transform != null ? transform.gameObject : null);
         }
 
-        public static Element Find(Transform root, string path)
-        {
-            if (root == null || string.IsNullOrEmpty(path))
-                return new Element(null);
-
-            Transform child = root.Find(path);
-            return new Element(child != null ? child.gameObject : null);
-        }
-
         public static Element Find(string sceneObjectName)
         {
             return new Element(string.IsNullOrEmpty(sceneObjectName) ? null : FindNamedObject(sceneObjectName));
@@ -269,44 +162,6 @@ namespace MultiplayerTools
             EnsureRectTransform(gameObject);
             gameObject.SetActive(active);
             return new Element(gameObject);
-        }
-
-        public static Canvas CreateOverlayCanvas(
-            string name = "UI Canvas",
-            int sortingOrder = 30000,
-            Vector2? referenceResolution = null)
-        {
-            EnsureEventSystem();
-            CanvasScaler templateScaler = Object.FindObjectOfType<CanvasScaler>();
-
-            GameObject canvasObject = Create(name).GameObject;
-            Canvas canvas = canvasObject.AddComponent<Canvas>();
-            canvas.renderMode = RenderMode.ScreenSpaceOverlay;
-            canvas.overrideSorting = true;
-            canvas.sortingOrder = sortingOrder;
-
-            CanvasScaler scaler = canvasObject.AddComponent<CanvasScaler>();
-            scaler.uiScaleMode = templateScaler != null ? templateScaler.uiScaleMode : CanvasScaler.ScaleMode.ScaleWithScreenSize;
-            scaler.referenceResolution = referenceResolution ?? (templateScaler != null ? templateScaler.referenceResolution : new Vector2(2560f, 1440f));
-            if (templateScaler != null)
-            {
-                scaler.screenMatchMode = templateScaler.screenMatchMode;
-                scaler.matchWidthOrHeight = templateScaler.matchWidthOrHeight;
-                scaler.referencePixelsPerUnit = templateScaler.referencePixelsPerUnit;
-            }
-
-            canvasObject.AddComponent<GraphicRaycaster>();
-            return canvas;
-        }
-
-        public static void EnsureEventSystem()
-        {
-            if (Object.FindObjectOfType<EventSystem>() != null)
-                return;
-
-            GameObject eventSystem = new GameObject("EventSystem");
-            eventSystem.AddComponent<EventSystem>();
-            eventSystem.AddComponent<StandaloneInputModule>();
         }
 
         public static Element Clone(GameObject template, Transform parent, string name = null, int? siblingIndex = null, bool active = true)
@@ -331,38 +186,6 @@ namespace MultiplayerTools
             where T : Component
         {
             return Clone(template != null ? template.gameObject : null, parent, name, siblingIndex, active).Get<T>();
-        }
-
-        public static TMP_Text CloneText(TMP_Text template, Transform parent, string text, string name = null, int? siblingIndex = null)
-        {
-            TMP_Text clone = CloneComponent(template, parent, name, siblingIndex);
-            return SetText(clone, text);
-        }
-
-        public static Button CloneButton(
-            Button template,
-            Transform parent,
-            string name = null,
-            string label = null,
-            UnityAction onClick = null,
-            int? siblingIndex = null,
-            bool clearListeners = true)
-        {
-            Button clone = CloneComponent(template, parent, name, siblingIndex);
-            if (clone == null)
-                return null;
-
-            if (label != null)
-                SetText(clone.GetComponentInChildren<TMP_Text>(true), label);
-            if (clearListeners)
-                clone.onClick.RemoveAllListeners();
-            ApplyButtonStyle(clone, template);
-            if (onClick != null)
-            {
-                clone.onClick.AddListener(onClick);
-            }
-
-            return clone;
         }
 
         public static TMP_InputField CloneInputField(
@@ -417,26 +240,6 @@ namespace MultiplayerTools
             return clone;
         }
 
-        public static TMP_Text CreateLabel(
-            Transform parent,
-            string text,
-            string name = "Label",
-            TMP_Text template = null,
-            int? siblingIndex = null,
-            bool active = true)
-        {
-            CaptureSceneDefaultsIf(template == null && Defaults.Label == null);
-            TMP_Text label = CloneText(template ?? Defaults.Label, parent, text, name, siblingIndex);
-            if (label == null)
-                label = CreateFallbackLabel(parent, name, text);
-
-            ResetLayoutSizing(label.gameObject);
-            ApplyTextStyle(label, template ?? Defaults.Label);
-            if (label != null)
-                label.gameObject.SetActive(active);
-            return label;
-        }
-
         public static TMP_Text CreatePlainLabel(
             Transform parent,
             string text,
@@ -449,78 +252,7 @@ namespace MultiplayerTools
             ApplyTextStyle(label, template ?? Defaults.Label);
             label.raycastTarget = false;
             SetText(label, text);
-            ResetLayoutSizing(label.gameObject);
             return label;
-        }
-
-        public static Button CreateButton(
-            Transform parent,
-            string label,
-            UnityAction onClick = null,
-            string name = "Button",
-            Button template = null,
-            int? siblingIndex = null,
-            bool active = true,
-            bool cloneTemplate = true)
-        {
-            CaptureSceneDefaultsIf(template == null && Defaults.Button == null);
-            Button button = cloneTemplate
-                ? CloneButton(template ?? Defaults.Button, parent, name, label, onClick, siblingIndex)
-                : null;
-            if (button == null)
-                button = CreateFallbackButton(parent, name, label, onClick, siblingIndex);
-
-            ResetLayoutSizing(button.gameObject);
-            ApplyButtonStyle(button, template ?? Defaults.Button);
-            if (button != null)
-                button.gameObject.SetActive(active);
-            return button;
-        }
-
-        public static TMP_InputField CreateInputField(
-            Transform parent,
-            string text = "",
-            string placeholder = null,
-            string name = "Input Field",
-            TMP_InputField template = null,
-            UnityAction<string> onValueChanged = null,
-            int? siblingIndex = null,
-            bool active = true)
-        {
-            CaptureSceneDefaultsIf(template == null && Defaults.InputField == null);
-            TMP_InputField inputField = CloneInputField(template ?? Defaults.InputField, parent, name, text, placeholder, siblingIndex);
-            if (inputField == null)
-                inputField = CreateFallbackInputField(parent, name, text, placeholder, siblingIndex);
-            if (inputField == null)
-                return null;
-
-            ResetLayoutSizing(inputField.gameObject);
-            if (onValueChanged != null)
-                inputField.onValueChanged.AddListener(onValueChanged);
-            inputField.gameObject.SetActive(active);
-            return inputField;
-        }
-
-        public static Toggle CreateToggle(
-            Transform parent,
-            string label,
-            bool isOn = false,
-            UnityAction<bool> onValueChanged = null,
-            string name = "Toggle",
-            Toggle template = null,
-            int? siblingIndex = null,
-            bool active = true)
-        {
-            CaptureSceneDefaultsIf(template == null && Defaults.Toggle == null);
-            Toggle toggle = CloneToggle(template ?? Defaults.Toggle, parent, name, label, isOn, onValueChanged, siblingIndex);
-            if (toggle == null)
-                toggle = CreateFallbackToggle(parent, name, label, isOn, onValueChanged, siblingIndex);
-
-            ResetLayoutSizing(toggle.gameObject);
-            ApplyToggleStyle(toggle, template ?? Defaults.Toggle);
-            if (toggle != null)
-                toggle.gameObject.SetActive(active);
-            return toggle;
         }
 
         public static MySliderUI CreateSlider(
@@ -559,7 +291,7 @@ namespace MultiplayerTools
             return sliderUi;
         }
 
-        public static Scrollbar CreateScrollbar(
+        private static Scrollbar CreateScrollbar(
             Transform parent,
             string name = "Scrollbar",
             Scrollbar template = null,
@@ -825,16 +557,6 @@ namespace MultiplayerTools
                 rectTransform.localScale = scale.Value;
         }
 
-        public static void Reparent(Component component, Transform parent, bool worldPositionStays = false, int? siblingIndex = null)
-        {
-            if (component == null || parent == null)
-                return;
-
-            component.transform.SetParent(parent, worldPositionStays);
-            if (siblingIndex.HasValue)
-                component.transform.SetSiblingIndex(siblingIndex.Value);
-        }
-
         public static void SetCanvasGroups(
             Transform root,
             float alpha = 1f,
@@ -982,16 +704,13 @@ namespace MultiplayerTools
             params float[] trackWidths)
         {
             Element row = Create(name, parent);
-            RectTransform rowRect = EnsureRectTransform(row.GameObject);
             SetFixedLayoutSize(row.GameObject, preferredHeight: height);
 
             if (trackWidths == null || trackWidths.Length == 0)
                 trackWidths = new[] { 0f, 0f, 1f };
 
             RectTransform[] tracks = new RectTransform[trackWidths.Length];
-            float x = padding != null ? padding.left : 0f;
             float totalFlexible = 0f;
-            float spacingTotal = spacing * Math.Max(0, trackWidths.Length - 1);
 
             for (int i = 0; i < trackWidths.Length; i++)
             {
@@ -1008,16 +727,6 @@ namespace MultiplayerTools
                 cellRect.pivot = new Vector2(0f, 0.5f);
                 cellRect.anchoredPosition = Vector2.zero;
                 cellRect.sizeDelta = new Vector2(0f, height);
-
-                float width = trackWidths[i];
-                if (width > 0f && totalFlexible > 0f)
-                {
-                    width = Mathf.Max(0f, width);
-                }
-                else if (width <= 0f)
-                {
-                    width = 0f;
-                }
 
                 tracks[i] = cellRect;
             }
@@ -1047,14 +756,11 @@ namespace MultiplayerTools
             if (trackWidths == null || trackWidths.Length != gridRow.Tracks.Length)
                 trackWidths = new float[gridRow.Tracks.Length];
 
-            float fixedWidthTotal = 0f;
             float flexibleUnits = 0f;
             for (int i = 0; i < trackWidths.Length; i++)
             {
                 if (trackWidths[i] > 0f)
                     flexibleUnits += trackWidths[i];
-                else
-                    fixedWidthTotal += 0f;
             }
 
             float remainingWidth = Mathf.Max(0f, rowWidth - leftPadding - rightPadding - spacing * Mathf.Max(0, trackWidths.Length - 1));
@@ -1132,29 +838,6 @@ namespace MultiplayerTools
                 layout.minHeight = minHeight.Value;
 
             return layout;
-        }
-
-        public static void ResetLayoutSizing(GameObject gameObject)
-        {
-            if (gameObject == null)
-                return;
-
-            RectTransform rect = EnsureRectTransform(gameObject);
-            rect.localScale = Vector3.one;
-            rect.anchoredPosition = Vector2.zero;
-
-            LayoutElement layout = gameObject.GetComponent<LayoutElement>();
-            if (layout == null)
-                return;
-
-            layout.ignoreLayout = false;
-            layout.minWidth = -1f;
-            layout.minHeight = -1f;
-            layout.preferredWidth = -1f;
-            layout.preferredHeight = -1f;
-            layout.flexibleWidth = -1f;
-            layout.flexibleHeight = -1f;
-            layout.layoutPriority = 1;
         }
 
         public static void StabilizeClonedControl(GameObject gameObject)
@@ -1313,39 +996,6 @@ namespace MultiplayerTools
             target.paragraphSpacing = template.paragraphSpacing;
         }
 
-        public static void ApplyButtonStyle(Button button, Button template = null)
-        {
-            if (button == null)
-                return;
-
-            template ??= Defaults.Button;
-            Image imageTemplate = template != null ? template.GetComponent<Image>() : Defaults.Background;
-            Image image = CopyImage(imageTemplate, button.gameObject);
-            if (image != null)
-            {
-                if (imageTemplate == null)
-                    image.color = FallbackButtonColor;
-                button.targetGraphic = image;
-            }
-
-            Shadow shadowTemplate = template != null ? template.GetComponent<Shadow>() : Defaults.Shadow;
-            if (shadowTemplate != null)
-                CopyShadow(shadowTemplate, button.gameObject);
-
-            if (template != null)
-            {
-                button.transition = template.transition;
-                button.colors = template.colors;
-                button.spriteState = template.spriteState;
-                button.animationTriggers = template.animationTriggers;
-                button.navigation = template.navigation;
-            }
-
-            ApplyTextStyle(button.GetComponentInChildren<TMP_Text>(true),
-                template != null ? template.GetComponentInChildren<TMP_Text>(true) : (Defaults.ButtonLabel ?? Defaults.Label));
-            NormalizeClonedUiRoot(button.gameObject);
-        }
-
         public static void ApplyToggleStyle(Toggle toggle, Toggle template = null)
         {
             if (toggle == null)
@@ -1412,7 +1062,7 @@ namespace MultiplayerTools
             NormalizeClonedUiRoot(toggle.gameObject);
         }
 
-        public static Image SetImageColor(Component component, Color color)
+        private static Image SetImageColor(Component component, Color color)
         {
             Image image = component != null ? component.GetComponent<Image>() : null;
             if (image != null)
@@ -1420,7 +1070,7 @@ namespace MultiplayerTools
             return image;
         }
 
-        public static Shadow SetShadowColor(Component component, Color color)
+        private static Shadow SetShadowColor(Component component, Color color)
         {
             Shadow shadow = component != null ? component.GetComponent<Shadow>() : null;
             if (shadow != null)
@@ -1432,11 +1082,6 @@ namespace MultiplayerTools
         {
             SetImageColor(button, imageColor);
             SetShadowColor(button, shadowColor);
-        }
-
-        public static Shadow ApplyDefaultShadow(Component component)
-        {
-            return Defaults.Shadow != null ? CopyShadow(Defaults.Shadow, component) : null;
         }
 
         public static Shadow CopyShadow(Shadow template, GameObject target)
@@ -1489,7 +1134,7 @@ namespace MultiplayerTools
             return image;
         }
 
-        public static void CopyGraphic(Graphic template, Graphic target)
+        private static void CopyGraphic(Graphic template, Graphic target)
         {
             if (template == null || target == null)
                 return;
@@ -1499,7 +1144,7 @@ namespace MultiplayerTools
             target.raycastTarget = template.raycastTarget;
         }
 
-        public static void CopyRect(RectTransform template, RectTransform target)
+        private static void CopyRect(RectTransform template, RectTransform target)
         {
             if (template == null || target == null)
                 return;
@@ -1514,7 +1159,7 @@ namespace MultiplayerTools
             target.localScale = Vector3.one;
         }
 
-        public static LayoutElement CopyLayout(LayoutElement template, GameObject target)
+        private static LayoutElement CopyLayout(LayoutElement template, GameObject target)
         {
             if (target == null)
                 return null;
@@ -1538,7 +1183,7 @@ namespace MultiplayerTools
             return layout;
         }
 
-        public static void ClearInputFieldEvents(TMP_InputField inputField)
+        private static void ClearInputFieldEvents(TMP_InputField inputField)
         {
             if (inputField == null)
                 return;
@@ -1547,114 +1192,6 @@ namespace MultiplayerTools
             inputField.onSubmit.RemoveAllListeners();
             inputField.onSelect.RemoveAllListeners();
             inputField.onDeselect.RemoveAllListeners();
-        }
-
-        private static TMP_Text CreateFallbackLabel(Transform parent, string name, string text)
-        {
-            Element element = Create(string.IsNullOrEmpty(name) ? "Label" : name, parent);
-            TMP_Text label = element.GameObject.AddComponent<TextMeshProUGUI>();
-            ApplyTextStyle(label, Defaults.Label);
-            label.raycastTarget = false;
-            SetText(label, text);
-            return label;
-        }
-
-        private static Button CreateFallbackButton(
-            Transform parent,
-            string name,
-            string label,
-            UnityAction onClick,
-            int? siblingIndex)
-        {
-            Element element = Create(string.IsNullOrEmpty(name) ? "Button" : name, parent);
-            if (siblingIndex.HasValue)
-                element.SiblingIndex(siblingIndex.Value);
-
-            Image image = CopyImage(Defaults.Button != null ? Defaults.Button.GetComponent<Image>() : Defaults.Background, element.GameObject);
-            if (image != null && Defaults.Button == null && Defaults.Background == null)
-                image.color = FallbackButtonColor;
-
-            Button button = element.GameObject.AddComponent<Button>();
-            button.targetGraphic = image;
-            ApplyButtonStyle(button, Defaults.Button);
-            if (onClick != null)
-                button.onClick.AddListener(onClick);
-
-            TMP_Text text = CreateFallbackLabel(element.Transform, "Text", label);
-            Stretch(text.gameObject);
-            text.alignment = TextAlignmentOptions.Center;
-            return button;
-        }
-
-        private static TMP_InputField CreateFallbackInputField(
-            Transform parent,
-            string name,
-            string text,
-            string placeholder,
-            int? siblingIndex)
-        {
-            Element element = Create(string.IsNullOrEmpty(name) ? "Input Field" : name, parent);
-            if (siblingIndex.HasValue)
-                element.SiblingIndex(siblingIndex.Value);
-
-            Image image = CopyImage(
-                Defaults.InputField != null ? Defaults.InputField.GetComponent<Image>() :
-                Defaults.Button != null ? Defaults.Button.GetComponent<Image>() :
-                Defaults.Background,
-                element.GameObject);
-            if (image != null && Defaults.InputField == null && Defaults.Button == null && Defaults.Background == null)
-                image.color = FallbackInputColor;
-
-            TMP_InputField input = element.GameObject.AddComponent<TMP_InputField>();
-            input.targetGraphic = image;
-            input.lineType = TMP_InputField.LineType.SingleLine;
-
-            TMP_Text placeholderText = CreateInputText(element.Transform, "Placeholder", placeholder ?? string.Empty, new Color(0.42f, 0.45f, 0.5f, 0.85f));
-            TMP_Text textComponent = CreateInputText(element.Transform, "Text", text ?? string.Empty, Color.black);
-            input.placeholder = placeholderText;
-            input.textComponent = textComponent;
-            input.text = text ?? string.Empty;
-            return input;
-        }
-
-        private static TMP_Text CreateInputText(Transform parent, string name, string text, Color color)
-        {
-            TMP_Text textComponent = CreateFallbackLabel(parent, name, text);
-            textComponent.color = color;
-            textComponent.alignment = TextAlignmentOptions.MidlineLeft;
-
-            RectTransform rect = Stretch(textComponent.gameObject);
-            rect.offsetMin = new Vector2(12f, 4f);
-            rect.offsetMax = new Vector2(-12f, -4f);
-            return textComponent;
-        }
-
-        private static Toggle CreateFallbackToggle(
-            Transform parent,
-            string name,
-            string label,
-            bool isOn,
-            UnityAction<bool> onValueChanged,
-            int? siblingIndex)
-        {
-            Element element = Create(string.IsNullOrEmpty(name) ? "Toggle" : name, parent);
-            if (siblingIndex.HasValue)
-                element.SiblingIndex(siblingIndex.Value);
-
-            Toggle toggle = element.GameObject.AddComponent<Toggle>();
-            if (!string.IsNullOrEmpty(label))
-            {
-                TMP_Text labelText = CreateFallbackLabel(element.Transform, "Text", label);
-                RectTransform labelRect = Stretch(labelText.gameObject);
-                labelRect.offsetMin = new Vector2(46f, 0f);
-                labelText.alignment = TextAlignmentOptions.MidlineLeft;
-            }
-
-            toggle.isOn = isOn;
-            ApplyToggleStyle(toggle, Defaults.Toggle);
-            if (onValueChanged != null)
-                toggle.onValueChanged.AddListener(onValueChanged);
-            return toggle;
         }
 
         private static T PickDefault<T>(T current, T candidate, bool overwriteExisting) where T : class
@@ -1666,7 +1203,7 @@ namespace MultiplayerTools
 
         private static void CaptureSceneDefaultsIf(bool shouldCapture)
         {
-            if (!shouldCapture || !AutoCaptureSceneDefaults || _lastAutoCaptureFrame == Time.frameCount)
+            if (!shouldCapture || _lastAutoCaptureFrame == Time.frameCount)
                 return;
 
             _lastAutoCaptureFrame = Time.frameCount;

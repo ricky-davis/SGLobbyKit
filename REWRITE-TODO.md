@@ -57,7 +57,7 @@
 - [x] Migrate call sites from `UILib` to `SleddingUiAdapter`/native UI helpers.
   - [x] Migrate settings menu view/controller layout, style, and create calls.
   - [x] Migrate lobby adapters/controller layout, style, and create calls.
-- [ ] Remove or obsolete unused `UILib` methods after migration.
+- [x] Remove unused `UILib` methods after migration.
 
 ## Documentation
 

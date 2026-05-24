@@ -4,8 +4,6 @@ namespace MultiplayerTools
 {
     internal static class SleddingUiAdapter
     {
-        public static UILib.DefaultReferences Templates => UILib.Defaults;
-
         public static UiElement Assume(GameObject gameObject)
         {
             return UILib.Assume(gameObject);
@@ -36,9 +34,5 @@ namespace MultiplayerTools
             NativeUiTemplates.CaptureFrom(root, overwriteExisting);
         }
 
-        public static void ClearTemplates()
-        {
-            NativeUiTemplates.Clear();
-        }
     }
 }
