@@ -33,7 +33,14 @@ namespace MultiplayerTools
             Vector2? sizeDelta = null,
             Vector3? scale = null)
         {
-            NativeUiBackend.SetRect(component, anchorMin, anchorMax, pivot, anchoredPosition, sizeDelta, scale);
+            NativeUiBackend.SetRect(
+                component,
+                anchoredPosition: anchoredPosition,
+                sizeDelta: sizeDelta,
+                anchorMin: anchorMin,
+                anchorMax: anchorMax,
+                pivot: pivot,
+                scale: scale);
         }
 
         public static LayoutElement SetLayout(
