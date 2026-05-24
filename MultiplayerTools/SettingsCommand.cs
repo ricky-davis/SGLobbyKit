@@ -10,7 +10,7 @@ namespace MultiplayerTools.Patches
     {
         public static void HandleCommand(PlayerControl playerControl, string args)
         {
-            SettingsMenuController.Instance.Open(SettingsMenuView.Build);
+            SettingsMenuController.Instance.Open(SettingsMenuView.Build, SettingsMenuView.HasRequiredTemplates);
         }
 
         public static bool IsOpen => SettingsMenuController.Instance.IsOpen;

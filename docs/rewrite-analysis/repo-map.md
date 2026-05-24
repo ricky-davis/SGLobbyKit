@@ -4,7 +4,7 @@
 
 MultiplayerTools is a C# `net6.0` MelonLoader mod for Sledding Game. It patches an Il2Cpp Unity game with Harmony and builds against assemblies under `$(GamePath)/MelonLoader/Il2CppAssemblies` plus MelonLoader and Harmony assemblies under `$(GamePath)/MelonLoader/net6`.
 
-The project disables default compile item discovery and explicitly compiles six source files from `MultiplayerTools/`.
+The project disables default compile item discovery and explicitly lists every compiled source file in `MultiplayerTools/MultiplayerTools.csproj`.
 
 ## Build And Runtime
 
@@ -34,24 +34,73 @@ No test project, formatter config, or CI workflow exists in this repository.
   - Calls `SettingsCommand.HandleCommand` for the host-only settings menu.
 
 - `UILib.cs`
-  - Large static Unity UI helper library.
-  - Captures templates from existing game UI.
-  - Clones and creates buttons, labels, inputs, toggles, sliders, panels, scroll views, rows, and layout helpers.
-  - Also contains game-specific discovery paths for `UI_CreateLobby`, main menu buttons, and lobby panel backgrounds.
+  - Temporary compatibility facade over the older UI helper implementation.
+  - Still contains legacy template capture, clone/create, style, layout, and fallback helper implementations while call sites migrate to the Sledding UI adapter files.
+
+- `UI/SleddingUiAdapter.cs`
+  - Compatibility entry point for Sledding-native UI adaptation.
+  - Delegates template capture/clearing to `NativeUiTemplates`.
+
+- `UI/SleddingUiPaths.cs`
+  - Centralizes known native Sledding UI object names and transform paths.
+
+- `UI/UiElement.cs`
+  - Chainable wrapper around Unity `GameObject`, `Transform`, and `RectTransform`.
+  - `UILib.Element` now derives from this for compatibility.
+
+- `UI/NativeUiTemplates.cs`
+  - Owns native template capture, clearing, and access to the current template catalog.
+
+- `UI/UiStyles.cs`
+  - Facade for native text, button, toggle, image, shadow, and layout style copying.
+
+- `UI/UiLayout.cs`
+  - Facade for rect and layout helpers.
+
+- `UI/NativeUiFactory.cs`
+  - Facade for creating/cloning native labels, buttons, inputs, toggles, sliders, panels, backdrops, and scroll views.
+
+- `UI/NativeUiBuilder.cs`
+  - Facade for common row/grid composition helpers.
 
 - `SettingsCommand.cs`
   - Harmony patch and command handler for a custom settings menu.
-  - Builds a modal settings panel with current `UILib` helpers.
-  - Directly binds controls to `MultiplayerToolsCore` preference setters.
-  - Owns menu open/close lifecycle, chat closing, cursor state, and Escape handling.
+  - Delegates menu lifecycle to `Features/Settings/SettingsMenuController`.
+
+- `Features/Settings/SettingsMenuController.cs`
+  - Owns settings open/close lifecycle, chat closing, cursor state, Escape handling, staged draft apply/discard behavior, and required-template validation.
+
+- `Features/Settings/SettingsMenuView.cs`
+  - Builds the modal settings panel from native UI templates.
+  - Uses `SettingsSchema` for simple one-label/one-control rows and explicit builders for compound password/join/leave rows.
+
+- `Features/Settings/SettingsDraft.cs`
+  - Stages settings edits before Apply commits the full draft through `MultiplayerToolsCore` setters.
+
+- `Features/Settings/SettingsSchema.cs`
+  - Describes simple settings fields used by the settings view.
 
 - `LobbyPatchFeatures.cs`
-  - Harmony patches for the main menu and lobby creation.
-  - Embeds `UI_CreateLobby` into the main menu.
-  - Replaces the lobby name label with an input.
-  - Extends max players to 64.
-  - Adds/binds lobby option controls.
-  - Hides close buttons and adjusts main menu layout.
+  - Thin Harmony patch shell named `LobbyPatches`.
+  - Delegates main menu enable and lobby creation patches to `Features/Lobby/LobbyUiController`.
+
+- `Features/Lobby/LobbyUiController.cs`
+  - Stateful controller for embedded create-lobby UI.
+  - Owns cached mod-added/native lobby controls and native listener binding IDs.
+  - Coordinates main menu adaptation, create-lobby adaptation, and lobby submission values.
+
+- `Features/Lobby/MainMenuAdapter.cs`
+  - Adjusts the native main menu layout around the embedded create-lobby UI.
+  - Hides the vanilla host button, repositions join/quit controls, and scales/moves the menu layout.
+
+- `Features/Lobby/LobbyMenuAdapter.cs`
+  - Finds and activates the native `UI_CreateLobby` root.
+  - Preserves the retry activation behavior needed because the vanilla menu disables panels after enable.
+  - Hides native create-lobby close buttons for the embedded main menu experience.
+
+- `Features/Lobby/LobbyCreateSubmission.cs`
+  - Computes lobby name and max-player values for `LobbyManager.CreateLobby` and `EOSLobbyManager.CreateLobby`.
+  - Falls back to saved preferences and player name when custom UI controls are unavailable.
 
 - `Utils.cs`
   - General game/player helper functions.
@@ -66,4 +115,3 @@ The requested overhaul is focused on:
 - `LobbyPatchFeatures.cs`
 
 These files currently form one broad UI subsystem but do not have clear ownership boundaries. The rewrite should split them into a conventional UI toolkit layer, game template/style layer, feature-specific views, and Harmony integration patches.
-

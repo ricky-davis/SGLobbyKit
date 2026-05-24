@@ -11,36 +11,42 @@
 
 - `ChatSystem` command table registers `!settings`.
 - `SettingsCommand.HandleCommand` opens the mod settings menu.
-- `LobbyPatchFeatures.UIMainMenu_OnEnable_Postfix` modifies the native main menu and embedded create-lobby UI.
-- `LobbyPatchFeatures` prefixes lobby creation calls to enforce the selected lobby name and max players.
+- `LobbyPatches.UIMainMenu_OnEnable_Postfix` delegates native main menu and embedded create-lobby setup to `LobbyUiController`.
+- `LobbyPatches` prefixes lobby creation calls and delegates selected lobby name/max-player enforcement to `LobbyUiController`.
 
 ## UILib Responsibilities Today
 
-`UILib` mixes four responsibilities:
+`UILib` is now a temporary compatibility facade over the older helper implementation. The target adapter files exist and delegate into `UILib` while call sites migrate:
 
-1. Element handle/wrapper
-   - `Element` wraps `GameObject` and provides chainable transform/layout helpers.
+- `UiElement` owns the chainable `GameObject`/`Transform` wrapper; `UILib.Element` derives from it for compatibility.
+- `NativeUiTemplates` owns template capture and access.
+- `UiStyles` owns style-copying entry points.
+- `UiLayout` owns rect/layout entry points.
+- `NativeUiFactory` owns native control clone/create entry points.
+- `NativeUiBuilder` owns common row/grid composition entry points.
 
-2. Template discovery and style capture
+The remaining `UILib` implementation still contains these responsibilities:
+
+1. Template discovery and style capture
    - `DefaultReferences`
    - `CaptureDefaultsFrom`
    - `CaptureSceneDefaults`
    - hard-coded create-lobby and main-menu path searches.
 
-3. Primitive factory and clone helpers
+2. Primitive factory and clone helpers
    - labels, buttons, inputs, toggles, sliders, scrollbars, panels, backgrounds, backdrops, scroll viewports.
 
-4. Layout and normalization helpers
+3. Layout and normalization helpers
    - vertical/horizontal layout groups.
    - manual grid track layout.
    - layout element sizing.
    - cloned control stabilization and animation cleanup.
 
-The target shape should keep these capabilities but make each responsibility explicit.
+The remaining migration work is to move feature call sites to the adapter files, then obsolete or remove unused compatibility methods.
 
 ## Settings Menu Responsibilities Today
 
-`SettingsCommand` owns:
+`SettingsCommand` is now a thin command/Harmony shell. `SettingsMenuController` owns lifecycle and staged state, while `SettingsMenuView` owns native-template view construction.
 
 - Command handler for `!settings`.
 - Root object creation and destruction.
@@ -50,25 +56,27 @@ The target shape should keep these capabilities but make each responsibility exp
 - Escape-to-close patch.
 - Modal backdrop, panel, scroll viewport, header, close button.
 - Row builders for inputs, toggles, dividers, sliders, and grid rows.
-- Direct preference binding to `MultiplayerToolsCore`.
+- Required native template validation before opening.
+- Staged draft binding through `SettingsDraft`; preferences are committed only by Apply actions.
 
-The target shape should move view construction into a dedicated settings view builder and keep the Harmony/command class thin.
+Simple one-label/one-control settings rows are generated from `SettingsSchema`. Password and join/leave message rows remain explicit compound builders.
 
 ## Lobby Patch Responsibilities Today
 
-`LobbyPatchFeatures` owns:
+`LobbyPatches` is now a thin Harmony shell. `LobbyUiController` coordinates the lobby feature and delegates focused work to `MainMenuAdapter`, `LobbyMenuAdapter`, and `LobbyCreateSubmission`.
+
+The lobby feature owns:
 
 - Custom lobby name fallback logic.
 - Replacement/cloning of the lobby name field.
 - Max-player slider mutation to support 64 players.
 - Binding native lobby toggles/password input to preferences.
 - Adding the guest bang command toggle to native lobby settings.
-- Prefix patches for `LobbyManager.CreateLobby` and `EOSLobbyManager.CreateLobby`.
 - Main menu layout changes.
 - Embedded create-lobby activation coroutine.
 - Native close-button hiding.
 
-The target shape should split patch hooks, native lobby view adaptation, and lobby submission data handling.
+Patch hooks, native lobby view adaptation, and lobby submission data handling have been split. Remaining lobby rewrite work should continue reducing `LobbyUiController` by moving native control composition and binding details behind clearer adapter methods.
 
 ## State And Data Flow
 

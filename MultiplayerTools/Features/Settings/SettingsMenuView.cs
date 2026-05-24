@@ -23,8 +23,24 @@ namespace MultiplayerTools.Features.Settings
         private const float LabelFontSize = 16f;
         private const float InputFontSize = 16f;
         private const float ServerNameFontSize = 16f;
+        private const float ButtonFontSize = 14f;
+        private const float CloseButtonFontSize = 16f;
 
         private static GameObject _firstSelectable;
+
+        public static bool HasRequiredTemplates(out string missing)
+        {
+            string result = string.Empty;
+            AddMissingTemplate(ref result, UILib.Defaults.Panel != null || UILib.Defaults.Background != null, "panel/background");
+            AddMissingTemplate(ref result, UILib.Defaults.Label != null, "label");
+            AddMissingTemplate(ref result, UILib.Defaults.Button != null, "button");
+            AddMissingTemplate(ref result, UILib.Defaults.InputField != null, "input field");
+            AddMissingTemplate(ref result, UILib.Defaults.Toggle != null, "toggle");
+            AddMissingTemplate(ref result, UILib.Defaults.Slider != null, "slider");
+            AddMissingTemplate(ref result, UILib.Defaults.Scrollbar != null, "scrollbar");
+            missing = result;
+            return string.IsNullOrEmpty(result);
+        }
 
         public static SettingsMenuHandle Build(Transform parent, SettingsDraft draft)
         {
@@ -59,9 +75,9 @@ namespace MultiplayerTools.Features.Settings
                 contentLayout.padding.bottom = ScrollBottomPadding;
             }
 
-            AddInput(content, "Server Name", draft.ServerName, value => draft.ServerName = value ?? string.Empty);
+            AddSchemaField(content, SettingsSchema.LobbySimpleFields[0], draft);
             AddCapacitySlider(content, draft);
-            AddToggle(content, "Public Lobby", draft.IsPublicLobby, value => draft.IsPublicLobby = value);
+            AddSchemaField(content, SettingsSchema.LobbySimpleFields[1], draft);
 
             RectTransform passwordInputTrack = null;
             AddGridRow(content, MessageRowHeight, 0f, new[] { 3f, 4f }, cells =>
@@ -79,12 +95,12 @@ namespace MultiplayerTools.Features.Settings
             if (passwordInputTrack != null)
                 passwordInputTrack.offsetMin = new Vector2(308f, passwordInputTrack.offsetMin.y);
 
-            AddToggle(content, "Peaceful Mode", draft.IsPeacefulMode, value => draft.IsPeacefulMode = value);
-            AddToggle(content, "Text Chat Only", draft.IsTextChatOnly, value => draft.IsTextChatOnly = value);
+            AddSchemaField(content, SettingsSchema.LobbySimpleFields[2], draft);
+            AddSchemaField(content, SettingsSchema.LobbySimpleFields[3], draft);
             AddDivider(content);
             AddHeader(content, "Mod Settings", textScale: 0.7f, anchoredPosition: new Vector2(0f, 15f));
-            AddToggle(content, "Enable Guest !Bang Commands", draft.EnableGuestBangCommands, value => draft.EnableGuestBangCommands = value);
-            AddInput(content, "Message of the Day", draft.MessageOfTheDay, value => draft.MessageOfTheDay = value ?? string.Empty);
+            foreach (SettingsField field in SettingsSchema.ModSimpleFields)
+                AddSchemaField(content, field, draft);
             AddMessageRow(
                 content,
                 "Join Messages",
@@ -105,6 +121,14 @@ namespace MultiplayerTools.Features.Settings
             return new SettingsMenuHandle(root, _firstSelectable);
         }
 
+        private static void AddMissingTemplate(ref string missing, bool present, string label)
+        {
+            if (present)
+                return;
+
+            missing = string.IsNullOrEmpty(missing) ? label : missing + ", " + label;
+        }
+
         private static void CloseButtonOnClick()
         {
             SettingsMenuController.Instance.RequestClose();
@@ -112,12 +136,13 @@ namespace MultiplayerTools.Features.Settings
 
         private static void AddHeader(Transform parent, string label = null, bool addCloseButton = false, float textScale = 1f, Vector2? anchoredPosition = null)
         {
-            GameObject row = UILib.CreateHorizontalRow(parent, height: 50f).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, height: 50f).GameObject;
+            DisableChildHeightControl(row);
 
             GameObject titleContainer = UILib.Create("Header Title Container", row.transform).GameObject;
             UILib.SetFixedLayoutSize(titleContainer, flexibleWidth: 1f, preferredHeight: 50f);
 
-            TMP_Text title = UILib.CreatePlainLabel(titleContainer.transform, label, "Header", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
+            TMP_Text title = NativeUiFactory.Label(titleContainer.transform, label, "Header", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
             UILib.Stretch(title.gameObject);
 
             UILib.SetTextMetrics(title, TitleFontSize * Mathf.Max(0.01f, textScale), TextAlignmentOptions.Center);
@@ -137,30 +162,31 @@ namespace MultiplayerTools.Features.Settings
             if (!addCloseButton)
                 return;
 
-            Button closeButton = UILib.CreateButton(row.transform, "X", (UnityAction)CloseButtonOnClick, "Close", cloneTemplate: false);
+            Button closeButton = CreateNativeButton(row.transform, "X", (UnityAction)CloseButtonOnClick, "Close", CloseButtonFontSize, new Vector2(25f, 25f));
             _firstSelectable = closeButton.gameObject;
             UILib.SetFixedLayoutSize(closeButton.gameObject, preferredWidth: 25f, preferredHeight: 25f);
         }
 
         private static void AddActionButtons(Transform parent)
         {
-            GameObject row = UILib.CreateHorizontalRow(parent, "Actions", height: 36f, spacing: RowSpacing).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, "Actions", height: 36f, spacing: RowSpacing).GameObject;
+            DisableChildHeightControl(row);
             UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 36f);
 
             GameObject spacer = UILib.Create("Actions Spacer", row.transform).GameObject;
             UILib.SetFixedLayoutSize(spacer, flexibleWidth: 1f, preferredHeight: 36f);
 
-            Button apply = UILib.CreateButton(row.transform, "Apply", (UnityAction)SettingsMenuController.Instance.Apply, "Apply");
+            Button apply = CreateNativeButton(row.transform, "Apply", (UnityAction)SettingsMenuController.Instance.Apply, "Apply", ButtonFontSize, new Vector2(150f, 36f));
             UILib.SetFixedLayoutSize(apply.gameObject, preferredWidth: 150f, preferredHeight: 36f);
 
-            Button applyClose = UILib.CreateButton(row.transform, "Apply & Close", (UnityAction)SettingsMenuController.Instance.ApplyAndClose, "Apply & Close");
+            Button applyClose = CreateNativeButton(row.transform, "Apply & Close", (UnityAction)SettingsMenuController.Instance.ApplyAndClose, "Apply & Close", ButtonFontSize, new Vector2(190f, 36f));
             UILib.SetFixedLayoutSize(applyClose.gameObject, preferredWidth: 190f, preferredHeight: 36f);
         }
 
         private static void AddCapacitySlider(Transform parent, SettingsDraft draft)
         {
             MySliderUI slider = null;
-            slider = UILib.CreateSlider(
+            slider = NativeUiFactory.Slider(
                 parent,
                 name: "Server Capacity Slider",
                 minValue: 1f,
@@ -174,7 +200,7 @@ namespace MultiplayerTools.Features.Settings
 
             if (slider == null || slider.slider == null)
             {
-                AddIntInput(parent, "Server Capacity", draft.ServerCapacity, value => draft.ServerCapacity = value);
+                Debug.LogWarning("[MultiplayerTools] Could not create settings capacity slider from native template.");
                 return;
             }
 
@@ -199,14 +225,37 @@ namespace MultiplayerTools.Features.Settings
             UILib.SetFixedLayoutSize(slider.gameObject, flexibleWidth: 1f, preferredHeight: SliderHeight);
         }
 
+        private static void AddSchemaField(Transform parent, SettingsField field, SettingsDraft draft)
+        {
+            if (field is TextSettingsField textField)
+            {
+                AddInput(
+                    parent,
+                    textField.Label,
+                    textField.Get(draft),
+                    value => textField.Set(draft, value),
+                    textField.Placeholder);
+                return;
+            }
+
+            if (field is ToggleSettingsField toggleField)
+            {
+                AddToggle(
+                    parent,
+                    toggleField.Label,
+                    toggleField.Get(draft),
+                    value => toggleField.Set(draft, value));
+            }
+        }
+
         private static void AddDivider(Transform parent, string label = null)
         {
-            GameObject row = UILib.CreateHorizontalRow(parent, "Divider", height: 2f, spacing: 0f).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, "Divider", height: 2f, spacing: 0f).GameObject;
             UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 2f);
 
             if (!string.IsNullOrEmpty(label))
             {
-                TMP_Text text = UILib.CreatePlainLabel(row.transform, label, "Divider Label", UILib.Defaults.SliderLabel ?? UILib.Defaults.Label);
+                TMP_Text text = NativeUiFactory.Label(row.transform, label, "Divider Label", UILib.Defaults.SliderLabel ?? UILib.Defaults.Label);
                 UILib.SetTextMetrics(text, LabelFontSize, TextAlignmentOptions.Left);
                 UILib.SetFixedLayoutSize(text.gameObject, preferredWidth: LabelWidth, preferredHeight: 24f);
             }
@@ -220,35 +269,15 @@ namespace MultiplayerTools.Features.Settings
         private static void AddInput(Transform parent, string label, string value, Action<string> setter, string placeholderText = "")
         {
             GameObject row = AddPreferenceRow(parent, label);
-            TMP_InputField input = UILib.CreateInputField(
+            TMP_InputField input = NativeUiFactory.Input(
                 row.transform,
-                value ?? string.Empty,
+                text: value ?? string.Empty,
                 placeholder: placeholderText ?? string.Empty,
                 name: "Input",
                 onValueChanged: (UnityAction<string>)((text) => setter(text)));
             input.lineType = TMP_InputField.LineType.SingleLine;
             bool isServerName = string.Equals(label, "Server Name", StringComparison.OrdinalIgnoreCase);
             UILib.SetInputTextStyle(input, isServerName ? ServerNameFontSize : InputFontSize, autoSize: isServerName, minFontSize: 13f);
-            UILib.SetFixedLayoutSize(input.gameObject, flexibleWidth: 1f, preferredHeight: InputHeight);
-        }
-
-        private static void AddIntInput(Transform parent, string label, int value, Action<int> setter)
-        {
-            GameObject row = AddPreferenceRow(parent, label);
-            TMP_InputField input = UILib.CreateInputField(
-                row.transform,
-                value.ToString(),
-                placeholder: string.Empty,
-                name: "Input",
-                onValueChanged: (UnityAction<string>)((text) =>
-                {
-                    if (int.TryParse(text, out int parsed))
-                        setter(Mathf.Clamp(parsed, 1, 64));
-                }));
-
-            input.contentType = TMP_InputField.ContentType.IntegerNumber;
-            input.lineType = TMP_InputField.LineType.SingleLine;
-            UILib.SetInputTextStyle(input, InputFontSize);
             UILib.SetFixedLayoutSize(input.gameObject, flexibleWidth: 1f, preferredHeight: InputHeight);
         }
 
@@ -264,11 +293,11 @@ namespace MultiplayerTools.Features.Settings
             Vector2? anchoredPosition = null,
             float labelOffsetX = 0f)
         {
-            Toggle toggle = UILib.CreateToggle(
+            Toggle toggle = NativeUiFactory.Toggle(
                 parent,
-                label,
-                value,
-                (UnityAction<bool>)((isOn) => setter(isOn)));
+                label: label,
+                isOn: value,
+                onValueChanged: (UnityAction<bool>)((isOn) => setter(isOn)));
 
             TMP_Text labelText = toggle.GetComponentInChildren<TMP_Text>(true);
             if (clearLabel && labelText != null)
@@ -288,6 +317,73 @@ namespace MultiplayerTools.Features.Settings
 
             if (stabilize)
                 UILib.StabilizeClonedControl(toggle.gameObject);
+        }
+
+        private static Button CreateNativeButton(Transform parent, string label, UnityAction onClick, string name, float fontSize, Vector2 size)
+        {
+            Button button = NativeUiFactory.Button(parent, label, onClick, name);
+            NormalizeSettingsButton(button, fontSize, size);
+            button.gameObject.SetActive(true);
+            return button;
+        }
+
+        internal static void NormalizeSettingsButton(Button button, float fontSize, Vector2 size)
+        {
+            if (button == null)
+                return;
+
+            UILib.ResetLayoutSizing(button.gameObject);
+            UILib.StabilizeClonedControl(button.gameObject);
+            DisableChildImages(button);
+            UILib.SetFixedLayoutSize(button.gameObject, preferredWidth: size.x, preferredHeight: size.y, flexibleWidth: 0f, flexibleHeight: 0f);
+            UILib.SetRect(
+                button,
+                anchorMin: new Vector2(0.5f, 0.5f),
+                anchorMax: new Vector2(0.5f, 0.5f),
+                pivot: new Vector2(0.5f, 0.5f),
+                anchoredPosition: Vector2.zero,
+                sizeDelta: size,
+                scale: Vector3.one);
+
+            TMP_Text label = button.GetComponentInChildren<TMP_Text>(true);
+            if (label != null)
+            {
+                UILib.SetTextMetrics(label, fontSize, TextAlignmentOptions.Center, autoSize: true, minFontSize: 10f);
+                UILib.SetRect(
+                    label,
+                    anchorMin: Vector2.zero,
+                    anchorMax: Vector2.one,
+                    pivot: new Vector2(0.5f, 0.5f),
+                    anchoredPosition: Vector2.zero,
+                    sizeDelta: Vector2.zero,
+                    scale: Vector3.one);
+                label.ForceMeshUpdate();
+            }
+        }
+
+        private static void DisableChildHeightControl(GameObject row)
+        {
+            HorizontalLayoutGroup layout = row != null ? row.GetComponent<HorizontalLayoutGroup>() : null;
+            if (layout == null)
+                return;
+
+            layout.childControlHeight = false;
+            layout.childForceExpandHeight = false;
+        }
+
+        private static void DisableChildImages(Button button)
+        {
+            if (button == null)
+                return;
+
+            foreach (Image image in button.GetComponentsInChildren<Image>(true))
+            {
+                if (image == null || image.gameObject == button.gameObject)
+                    continue;
+
+                image.enabled = false;
+                image.raycastTarget = false;
+            }
         }
 
         private static void AddMessageRow(
@@ -317,7 +413,7 @@ namespace MultiplayerTools.Features.Settings
         private static MySliderUI CreateSizeSlider(Transform parent, int sizeValue, Action<int> setSize)
         {
             MySliderUI sliderUi = null;
-            sliderUi = UILib.CreateSlider(
+            sliderUi = NativeUiFactory.Slider(
                 parent,
                 name: "Size Slider",
                 minValue: 50f,
@@ -371,7 +467,7 @@ namespace MultiplayerTools.Features.Settings
 
         private static void AddGridRow(Transform parent, float height, float spacing, float[] trackWeights, Action<Transform[]> build)
         {
-            UILib.GridTrackRow row = UILib.CreateGridTrackRow(parent, height: height, spacing: spacing, trackWidths: trackWeights);
+            UILib.GridTrackRow row = NativeUiBuilder.GridTrackRow(parent, height: height, spacing: spacing, trackWidths: trackWeights);
             UILib.SetFixedLayoutSize(row.GameObject, flexibleWidth: 1f, preferredHeight: height);
 
             if (build == null || row.Tracks == null)
@@ -387,7 +483,7 @@ namespace MultiplayerTools.Features.Settings
 
         private static GameObject AddPreferenceRow(Transform parent, string label)
         {
-            GameObject row = UILib.CreateHorizontalRow(parent, height: InputHeight, spacing: RowSpacing).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(parent, height: InputHeight, spacing: RowSpacing).GameObject;
             UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: InputHeight);
 
             if (string.IsNullOrEmpty(label))
@@ -406,7 +502,7 @@ namespace MultiplayerTools.Features.Settings
                 return row;
             }
 
-            TMP_Text labelText = UILib.CreatePlainLabel(row.transform, label, "Label", UILib.Defaults.SliderLabel ?? UILib.Defaults.Label);
+            TMP_Text labelText = NativeUiFactory.Label(row.transform, label, "Label", UILib.Defaults.SliderLabel ?? UILib.Defaults.Label);
             UILib.SetTextMetrics(labelText, LabelFontSize, TextAlignmentOptions.Left, autoSize: true, minFontSize: 12f);
             labelText.color = Color.white;
             labelText.ForceMeshUpdate();

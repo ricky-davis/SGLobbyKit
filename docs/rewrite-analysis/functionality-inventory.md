@@ -26,6 +26,7 @@ Preserve these behaviors:
 - Host command `!settings` opens the MultiplayerTools settings UI.
 - Opening settings closes any existing settings root.
 - Opening settings captures scene defaults.
+- Opening settings aborts with a clear warning if required native templates are missing.
 - Opening settings closes chat and closes other game menus.
 - Settings root is parented under the native UI parent when possible.
 - Settings modal includes a screen backdrop and centered panel.
@@ -38,6 +39,7 @@ Preserve these behaviors:
 - Closing destroys the root, clears the first selectable, closes chat, and restores locked/hidden cursor.
 - Menu is opened through `UiReferenceController.OpenMenu` when available.
 - Cursor is unlocked/visible if no `UiReferenceController` is available.
+- Settings controls are cloned from native templates; the settings window does not create plain fallback controls.
 
 Preserve displayed settings:
 

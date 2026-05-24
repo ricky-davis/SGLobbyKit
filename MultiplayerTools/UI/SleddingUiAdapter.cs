@@ -8,18 +8,17 @@ namespace MultiplayerTools
 
         public static void CaptureSceneTemplates(bool overwriteExisting = false)
         {
-            UILib.CaptureSceneDefaults(overwriteExisting);
+            NativeUiTemplates.CaptureScene(overwriteExisting);
         }
 
         public static void CaptureTemplatesFrom(Transform root, bool overwriteExisting = false)
         {
-            UILib.CaptureDefaultsFrom(root, overwriteExisting);
+            NativeUiTemplates.CaptureFrom(root, overwriteExisting);
         }
 
         public static void ClearTemplates()
         {
-            UILib.ClearDefaults();
+            NativeUiTemplates.Clear();
         }
     }
 }
-

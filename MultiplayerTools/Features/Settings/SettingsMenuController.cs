@@ -9,6 +9,8 @@ using Object = UnityEngine.Object;
 
 namespace MultiplayerTools.Features.Settings
 {
+    internal delegate bool SettingsTemplateValidator(out string missingTemplates);
+
     internal sealed class SettingsMenuController
     {
         private GameObject _root;
@@ -25,10 +27,18 @@ namespace MultiplayerTools.Features.Settings
 
         public bool IsOpen => _root != null;
 
-        public void Open(Func<Transform, SettingsDraft, SettingsMenuHandle> buildMenu)
+        public void Open(
+            Func<Transform, SettingsDraft, SettingsMenuHandle> buildMenu,
+            SettingsTemplateValidator validateTemplates = null)
         {
             CloseWithoutPrompt();
             SleddingUiAdapter.CaptureSceneTemplates(overwriteExisting: false);
+            if (validateTemplates != null && !validateTemplates(out string missingTemplates))
+            {
+                Debug.LogWarning($"[MultiplayerTools] Could not open settings UI: missing native UI templates: {missingTemplates}.");
+                return;
+            }
+
             ForceCloseChat();
             UiReferenceController.Instance?.CloseAllOpenMenus(false);
 
@@ -118,7 +128,7 @@ namespace MultiplayerTools.Features.Settings
 
         public void HandleEscape()
         {
-            if (_root == null || !Input.GetKeyDown(KeyCode.Escape))
+            if (_root == null || !UnityEngine.Input.GetKeyDown(KeyCode.Escape))
                 return;
 
             RequestClose();
@@ -144,28 +154,42 @@ namespace MultiplayerTools.Features.Settings
             panel.CenterAnchors().Resize(new Vector2(560f, 190f)).Move(Vector2.zero);
             UILib.SetVerticalLayout(panel.GameObject, new RectOffset(26, 26, 22, 22), spacing: 14f);
 
-            TMP_Text title = UILib.CreatePlainLabel(panel.Transform, "Unapplied Changes", "Confirmation Title", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
+            TMP_Text title = NativeUiFactory.Label(panel.Transform, "Unapplied Changes", "Confirmation Title", UILib.Defaults.HeaderLabel ?? UILib.Defaults.Label);
             UILib.SetTextMetrics(title, 20f, TextAlignmentOptions.Center);
             title.color = Color.white;
             title.fontStyle = FontStyles.Bold;
             UILib.SetFixedLayoutSize(title.gameObject, flexibleWidth: 1f, preferredHeight: 34f);
 
-            TMP_Text body = UILib.CreatePlainLabel(panel.Transform, "Apply your changes before closing?", "Confirmation Body", UILib.Defaults.Label);
+            TMP_Text body = NativeUiFactory.Label(panel.Transform, "Apply your changes before closing?", "Confirmation Body", UILib.Defaults.Label);
             UILib.SetTextMetrics(body, 15f, TextAlignmentOptions.Center, autoSize: true, minFontSize: 12f);
             body.color = Color.white;
             UILib.SetFixedLayoutSize(body.gameObject, flexibleWidth: 1f, preferredHeight: 38f);
 
-            GameObject row = UILib.CreateHorizontalRow(panel.Transform, "Confirmation Actions", height: 36f, spacing: 10f).GameObject;
+            GameObject row = NativeUiBuilder.HorizontalRow(panel.Transform, "Confirmation Actions", height: 36f, spacing: 10f).GameObject;
+            HorizontalLayoutGroup rowLayout = row.GetComponent<HorizontalLayoutGroup>();
+            if (rowLayout != null)
+            {
+                rowLayout.childControlHeight = false;
+                rowLayout.childForceExpandHeight = false;
+            }
             UILib.SetFixedLayoutSize(row, flexibleWidth: 1f, preferredHeight: 36f);
 
-            Button applyClose = UILib.CreateButton(row.transform, "Apply & Close", (UnityEngine.Events.UnityAction)ApplyAndClose, "Apply & Close");
+            Button applyClose = CreateNativeButton(row.transform, "Apply & Close", (UnityEngine.Events.UnityAction)ApplyAndClose, "Apply & Close");
             UILib.SetFixedLayoutSize(applyClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
 
-            Button discardClose = UILib.CreateButton(row.transform, "Discard & Close", (UnityEngine.Events.UnityAction)DiscardAndClose, "Discard & Close");
+            Button discardClose = CreateNativeButton(row.transform, "Discard & Close", (UnityEngine.Events.UnityAction)DiscardAndClose, "Discard & Close");
             UILib.SetFixedLayoutSize(discardClose.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
 
-            Button cancel = UILib.CreateButton(row.transform, "Cancel", (UnityEngine.Events.UnityAction)(() => _confirmationRoot?.SetActive(false)), "Cancel");
+            Button cancel = CreateNativeButton(row.transform, "Cancel", (UnityEngine.Events.UnityAction)(() => _confirmationRoot?.SetActive(false)), "Cancel");
             UILib.SetFixedLayoutSize(cancel.gameObject, flexibleWidth: 1f, preferredHeight: 36f);
+        }
+
+        private static Button CreateNativeButton(Transform parent, string label, UnityEngine.Events.UnityAction onClick, string name)
+        {
+            Button button = NativeUiFactory.Button(parent, label, onClick, name);
+            SettingsMenuView.NormalizeSettingsButton(button, 14f, new Vector2(150f, 36f));
+            button.gameObject.SetActive(true);
+            return button;
         }
 
         private static Transform FindNativeUiParent()

@@ -621,18 +621,28 @@
     <Compile Include="UILib.cs" />
     <Compile Include="UI/SleddingUiAdapter.cs" />
     <Compile Include="UI/SleddingUiPaths.cs" />
+    <Compile Include="UI/UiElement.cs" />
+    <Compile Include="UI/NativeUiTemplates.cs" />
+    <Compile Include="UI/UiStyles.cs" />
+    <Compile Include="UI/UiLayout.cs" />
+    <Compile Include="UI/NativeUiFactory.cs" />
+    <Compile Include="UI/NativeUiBuilder.cs" />
     <Compile Include="Features/Settings/SettingsDraft.cs" />
     <Compile Include="Features/Settings/SettingsSchema.cs" />
     <Compile Include="Features/Settings/SettingsMenuHandle.cs" />
     <Compile Include="Features/Settings/SettingsMenuController.cs" />
     <Compile Include="Features/Settings/SettingsMenuView.cs" />
     <Compile Include="Features/Lobby/LobbyUiController.cs" />
+    <Compile Include="Features/Lobby/MainMenuAdapter.cs" />
+    <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
+    <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	
-	<Target Name="PostBuild" AfterTargets="PostBuildEvent">
-		<Exec Command="COPY &quot;$(TargetPath)&quot; &quot;$(GamePath)/Mods&quot;" />
+	<Target Name="PostBuild" AfterTargets="PostBuildEvent" Condition="'$(DeployMod)' == 'true'">
+		<MakeDir Directories="$(GamePath)/Mods" />
+		<Copy SourceFiles="$(TargetPath)" DestinationFolder="$(GamePath)/Mods" />
 	</Target>
 </Project>
