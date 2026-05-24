@@ -21,7 +21,8 @@
 - [x] Verify `Apply & Close` saves preferences and closes.
 - [x] Verify `X`/Escape prompts only when there are unapplied changes.
 - [x] Verify confirmation actions: `Apply & Close`, `Discard & Close`, `Cancel`.
-- [ ] Verify settings parent resolution from main menu, pause menu, active game, and lobby.
+- [x] Verify settings parent resolution for reachable `!settings` state.
+  - `!settings` is only available during active gameplay, so main menu, pause menu, and create-lobby states are not reachable cases.
 
 ## Lobby Rewrite
 

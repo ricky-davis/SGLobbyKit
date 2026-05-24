@@ -11,7 +11,8 @@ Use this checklist during the rewrite. Any unchecked item is a possible regressi
 ## Settings Menu Visual Parity
 
 - [x] `!settings` opens a modal over the native UI.
-- [ ] Settings window can resolve a native parent from main menu, pause menu, active game, and lobby states.
+- [x] Settings window resolves a native parent during active gameplay.
+  - `!settings` is not reachable from main menu, pause menu, or create-lobby states.
 - [x] Backdrop covers the screen and blocks raycasts.
 - [x] Panel remains centered and `900 x 640`.
 - [x] Header, close button, labels, inputs, toggles, sliders, divider, and scroll viewport match current appearance.
