@@ -22,8 +22,8 @@ The project uses explicit `<Compile Include="...">` items. Any new `.cs` file mu
 
 Do not duplicate these; read them directly:
 
-- Rewrite TODO: `REWRITE-TODO.md`
-- Repo/system/functionality docs: `docs/rewrite-analysis/`
+- Rewrite TODO: `docs/archive/native-ui-settings-lobby-rewrite/REWRITE-TODO.md`
+- Repo/system/functionality docs: `docs/archive/native-ui-settings-lobby-rewrite/rewrite-analysis/`
 - ADR for staged settings: `docs/adr/0001-stage-settings-window-edits.md`
 - ADR for Sledding UI Adapter: `docs/adr/0002-use-sledding-ui-adapter.md`
 - Glossary/context: `CONTEXT.md`
@@ -116,7 +116,7 @@ Expect possible Windows `GamePath` reference issues from this Linux shell. `Mult
    - `LobbyMenuAdapter`.
    - `LobbyCreateSubmission`.
 
-Use `REWRITE-TODO.md` as the checklist source of truth.
+Use `docs/archive/native-ui-settings-lobby-rewrite/REWRITE-TODO.md` as the archived checklist source of truth.
 
 ## Suggested Skills
 
@@ -129,5 +129,5 @@ Use `REWRITE-TODO.md` as the checklist source of truth.
 - Do not overwrite user changes in `TODO.md`.
 - Treat `ui-dump-full.json` as dev-only inspection data, not committed source of truth.
 - Keep changes incremental and reviewable.
-- Since there are no tests, preserve behavior carefully and update `docs/rewrite-analysis/parity-checklist.md` when in-game checks are completed.
+- Since there are no tests, preserve behavior carefully and update `docs/archive/native-ui-settings-lobby-rewrite/rewrite-analysis/parity-checklist.md` when in-game checks are completed.
 - Do not try to build locally, we don't have dotnet. The user has to build on a different system and test externally.

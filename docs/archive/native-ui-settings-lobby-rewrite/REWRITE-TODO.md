@@ -2,7 +2,7 @@
 
 ## Current State
 
-- [x] Document rewrite analysis in `docs/rewrite-analysis/`.
+- [x] Document rewrite analysis in `docs/archive/native-ui-settings-lobby-rewrite/rewrite-analysis/`.
 - [x] Record ADR for staged settings window edits.
 - [x] Record ADR for Sledding UI Adapter architecture.
 - [x] Add `SleddingUiPaths`.
@@ -62,6 +62,6 @@
 
 ## Documentation
 
-- [x] Update `docs/rewrite-analysis/functionality-inventory.md` after each behavior-changing slice.
-- [x] Update `docs/rewrite-analysis/parity-checklist.md` as parity checks are completed.
+- [x] Update `docs/archive/native-ui-settings-lobby-rewrite/rewrite-analysis/functionality-inventory.md` after each behavior-changing slice.
+- [x] Update `docs/archive/native-ui-settings-lobby-rewrite/rewrite-analysis/parity-checklist.md` as parity checks are completed.
 - [ ] Add ADR only for hard-to-reverse, surprising trade-off decisions.
