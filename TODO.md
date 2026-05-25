@@ -8,9 +8,9 @@
 
 ## Lobby Search
 - [ ] Minimum players sliders
-- [ ] Max Player slider goes to 64
+- [x] Max Player slider goes to 64
 - [ ] Max player slider is inclusive of greater than?
-- [ ] Remember search settings
+- [x] Remember search settings
 
 
 ## Add a command to open an in-game-menu for host to edit mod lobby settings
