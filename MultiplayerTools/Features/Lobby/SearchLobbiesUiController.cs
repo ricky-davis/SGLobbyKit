@@ -17,6 +17,7 @@ namespace MultiplayerTools.Features.Lobby
         private bool _watcherRunning;
         private bool _panelLoopRunning;
         private bool _suppressCapture;
+        private bool _applyPreferencesOnNextSearch;
 
         private SearchLobbiesUiController()
         {
@@ -29,6 +30,20 @@ namespace MultiplayerTools.Features.Lobby
 
             _watcherRunning = true;
             MelonCoroutines.Start(WatchLobbyExplorerPanel());
+        }
+
+        public void MarkLobbyExplorerOpening()
+        {
+            _applyPreferencesOnNextSearch = true;
+        }
+
+        public void ApplyPreferencesBeforeInitialSearch(UILobbyExplorer lobbyExplorer)
+        {
+            if (!_applyPreferencesOnNextSearch)
+                return;
+
+            ApplyLobbyExplorerPreferences(lobbyExplorer != null ? lobbyExplorer.transform : null);
+            _applyPreferencesOnNextSearch = false;
         }
 
         private IEnumerator WatchLobbyExplorerPanel()
@@ -72,6 +87,7 @@ namespace MultiplayerTools.Features.Lobby
             while (IsOpen(root))
             {
                 CaptureLobbyExplorerPreferenceChanges(root);
+                RefreshMaxPlayersDisplay(GetControls(root).MaxPlayersFilterSlider);
                 yield return null;
             }
 
@@ -162,7 +178,7 @@ namespace MultiplayerTools.Features.Lobby
 
             if (valueText != null)
             {
-                valueText.text = value.ToString();
+                valueText.text = $">={value}";
                 valueText.gameObject.SetActive(value != 0);
                 valueText.ForceMeshUpdate();
             }

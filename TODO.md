@@ -9,8 +9,9 @@
 ## Lobby Search
 - [ ] Minimum players sliders
 - [x] Max Player slider goes to 64
-- [x] Max player slider is inclusive of greater than?
+- [x] Max player slider is greater than or equal
 - [x] Remember search settings
+- [x] Opening the lobby search should respect settings. Currently only respects settings when the refresh button is clicked.
 
 
 ## Add a command to open an in-game-menu for host to edit mod lobby settings

@@ -91,6 +91,20 @@ namespace MultiplayerTools.Patches
             }
         }
 
+        [HarmonyPatch(typeof(UILobbyExplorer), "ShowPanel")]
+        [HarmonyPrefix]
+        private static void UILobbyExplorer_ShowPanel_Prefix()
+        {
+            SearchLobbiesUiController.Instance.MarkLobbyExplorerOpening();
+        }
+
+        [HarmonyPatch(typeof(UILobbyExplorer), "GetListOfLobbies")]
+        [HarmonyPrefix]
+        private static void UILobbyExplorer_GetListOfLobbies_Prefix(UILobbyExplorer __instance)
+        {
+            SearchLobbiesUiController.Instance.ApplyPreferencesBeforeInitialSearch(__instance);
+        }
+
         private static bool IsMaxPlayersAttribute(object value)
         {
             if (value == null)
