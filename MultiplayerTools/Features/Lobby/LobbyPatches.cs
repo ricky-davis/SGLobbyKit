@@ -1,12 +1,15 @@
+using System.Collections.Generic;
 using HarmonyLib;
 using Il2CppInterop.Runtime;
 using Il2CppEpic.OnlineServices;
 using Il2CppEpic.OnlineServices.Lobby;
 using Il2CppPlayEveryWare.EpicOnlineServices.Samples;
+using Il2CppTMPro;
 using Il2Cpp_Scripts.Managers;
 using Il2Cpp_Scripts.UI.Pre_Game;
 using MelonLoader;
 using MultiplayerTools.Features.Lobby;
+using UnityEngine;
 using EosLobby = Il2CppPlayEveryWare.EpicOnlineServices.Samples.Lobby;
 
 namespace MultiplayerTools.Patches
@@ -61,6 +64,20 @@ namespace MultiplayerTools.Patches
             }
         }
 
+        [HarmonyPatch(typeof(LobbyInterface), "CreateLobbySearch")]
+        [HarmonyPrefix]
+        private static void LobbyInterface_CreateLobbySearch_Prefix(ref CreateLobbySearchOptions options)
+        {
+            try
+            {
+                options.MaxResults = 100;
+            }
+            catch (System.Exception ex)
+            {
+                MelonLogger.Warning($"Failed to increase lobby search result limit: {ex}");
+            }
+        }
+
         [HarmonyPatch(typeof(UILobbyExplorer), "AddSearchParam")]
         [HarmonyPostfix]
         private static void UILobbyExplorer_AddSearchParam_Postfix(object[] __args)
@@ -103,6 +120,20 @@ namespace MultiplayerTools.Patches
         private static void UILobbyExplorer_GetListOfLobbies_Prefix(UILobbyExplorer __instance)
         {
             SearchLobbiesUiController.Instance.ApplyPreferencesBeforeInitialSearch(__instance);
+        }
+
+        [HarmonyPatch(typeof(UILobbyExplorer), "UIUpdateSearchResults")]
+        [HarmonyPostfix]
+        private static void UILobbyExplorer_UIUpdateSearchResults_Postfix(UILobbyExplorer __instance)
+        {
+            try
+            {
+                SortVisibleLobbyRowsByCurrentPlayers(__instance);
+            }
+            catch (System.Exception ex)
+            {
+                MelonLogger.Warning($"Failed to sort visible lobby rows by current players: {ex}");
+            }
         }
 
         private static bool IsMaxPlayersAttribute(object value)
@@ -157,6 +188,68 @@ namespace MultiplayerTools.Patches
                 result = 0;
                 return false;
             }
+        }
+
+        private static void SortVisibleLobbyRowsByCurrentPlayers(UILobbyExplorer lobbyExplorer)
+        {
+            if (lobbyExplorer == null)
+                return;
+
+            var rows = new List<LobbyRowEntry>();
+            foreach (UILobbyItem item in lobbyExplorer.GetComponentsInChildren<UILobbyItem>(true))
+            {
+                Transform itemTransform = item.transform;
+                if (itemTransform?.parent == null || !TryGetDisplayedCurrentPlayers(item, out int currentPlayers))
+                    continue;
+
+                rows.Add(new LobbyRowEntry(itemTransform, currentPlayers, itemTransform.GetSiblingIndex()));
+            }
+
+            if (rows.Count < 2)
+                return;
+
+            rows.Sort((left, right) =>
+            {
+                int playerComparison = right.CurrentPlayers.CompareTo(left.CurrentPlayers);
+                return playerComparison != 0 ? playerComparison : left.OriginalIndex.CompareTo(right.OriginalIndex);
+            });
+
+            for (int i = 0; i < rows.Count; i++)
+                rows[i].Transform.SetSiblingIndex(i);
+        }
+
+        private static bool TryGetDisplayedCurrentPlayers(UILobbyItem item, out int currentPlayers)
+        {
+            foreach (TMP_Text text in item.GetComponentsInChildren<TMP_Text>(true))
+            {
+                string value = text?.text;
+                if (string.IsNullOrWhiteSpace(value))
+                    continue;
+
+                int slashIndex = value.IndexOf('/');
+                if (slashIndex <= 0)
+                    continue;
+
+                if (int.TryParse(value.Substring(0, slashIndex).Trim(), out currentPlayers))
+                    return true;
+            }
+
+            currentPlayers = 0;
+            return false;
+        }
+
+        private sealed class LobbyRowEntry
+        {
+            public LobbyRowEntry(Transform transform, int currentPlayers, int originalIndex)
+            {
+                Transform = transform;
+                CurrentPlayers = currentPlayers;
+                OriginalIndex = originalIndex;
+            }
+
+            public Transform Transform { get; }
+            public int CurrentPlayers { get; }
+            public int OriginalIndex { get; }
         }
 
         [HarmonyPatch(typeof(UIMainMenu), "OnEnable")]
