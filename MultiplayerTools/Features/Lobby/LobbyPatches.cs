@@ -39,6 +39,7 @@ namespace MultiplayerTools.Patches
         private static void UIMainMenu_OnEnable_Postfix(UIMainMenu __instance)
         {
             LobbyUiController.Instance.ConfigureMainMenuOnEnable(__instance);
+            SearchLobbiesUiController.Instance.ConfigureMainMenuOnEnable(__instance);
         }
     }
 }

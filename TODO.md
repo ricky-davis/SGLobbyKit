@@ -6,6 +6,13 @@
 ## Chat system
 - [ ] Add vote kick system
 
+## Lobby Search
+- [ ] Minimum players sliders
+- [ ] Max Player slider goes to 64
+- [ ] Max player slider is inclusive of greater than?
+- [ ] Remember search settings
+
+
 ## Add a command to open an in-game-menu for host to edit mod lobby settings
 -[x] MOTD
 -[x] Enable Bang Commands

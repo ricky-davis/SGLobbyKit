@@ -23,6 +23,14 @@ namespace MultiplayerTools
         private static MelonPreferences_Entry<bool> _enableGuestBangCommands;
         private static MelonPreferences_Entry<string> _serverName;
         private static MelonPreferences_Entry<int> _serverCapacity;
+        private static MelonPreferences_Entry<int> _searchMinPlayers;
+        private static MelonPreferences_Entry<int> _searchMaxPlayers;
+        private static MelonPreferences_Entry<bool> _searchShowLocked;
+        private static MelonPreferences_Entry<bool> _searchShowModded;
+        private static MelonPreferences_Entry<bool> _searchShowYourLanguageOnly;
+        private static MelonPreferences_Entry<bool> _searchOnlyPeacefulLobbies;
+        private static MelonPreferences_Entry<bool> _searchHidePeacefulLobbies;
+        private static MelonPreferences_Entry<bool> _searchCrossplay;
         private static MelonPreferences_Entry<bool> _isPublicLobby;
         private static MelonPreferences_Entry<bool> _isPasswordProtected;
         private static MelonPreferences_Entry<string> _lobbyPassword;
@@ -37,6 +45,14 @@ namespace MultiplayerTools
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
         public static int ServerCapacity => _serverCapacity?.Value ?? 8;
+        public static int SearchMinPlayers => _searchMinPlayers?.Value ?? 1;
+        public static int SearchMaxPlayers => _searchMaxPlayers?.Value ?? 0; // 0 == Any
+        public static bool SearchShowLocked => _searchShowLocked?.Value ?? true;
+        public static bool SearchShowModded => _searchShowModded?.Value ?? true;
+        public static bool SearchShowYourLanguageOnly => _searchShowYourLanguageOnly?.Value ?? false;
+        public static bool SearchOnlyPeacefulLobbies => _searchOnlyPeacefulLobbies?.Value ?? false;
+        public static bool SearchHidePeacefulLobbies => _searchHidePeacefulLobbies?.Value ?? false;
+        public static bool SearchCrossplay => _searchCrossplay?.Value ?? true;
         public static bool IsPublicLobby => _isPublicLobby?.Value ?? true;
         public static bool IsPasswordProtected => _isPasswordProtected?.Value ?? false;
         public static string LobbyPassword => _lobbyPassword?.Value ?? string.Empty;
@@ -69,6 +85,14 @@ namespace MultiplayerTools
             _lobbyPassword = _preferences.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
             _isPeacefulMode = _preferences.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
             _isTextChatOnly = _preferences.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+            _searchMinPlayers = _preferences.CreateEntry("SearchMinPlayers", 1, "Search Min Players", "Minimum players filter for lobby search.");
+            _searchMaxPlayers = _preferences.CreateEntry("SearchMaxPlayers", 0, "Search Max Players", "Maximum players filter for lobby search. 0 == Any.");
+            _searchShowLocked = _preferences.CreateEntry("SearchShowLocked", true, "Search Show Locked", "Include locked lobbies in search results.");
+            _searchShowModded = _preferences.CreateEntry("SearchShowModded", true, "Search Show Modded", "Include modded lobbies in search results.");
+            _searchShowYourLanguageOnly = _preferences.CreateEntry("SearchShowYourLanguageOnly", false, "Search Your Language Only", "Filter to language-matching lobbies.");
+            _searchOnlyPeacefulLobbies = _preferences.CreateEntry("SearchOnlyPeacefulLobbies", false, "Search Only Peaceful Lobbies", "Only show peaceful-mode lobbies in search results.");
+            _searchHidePeacefulLobbies = _preferences.CreateEntry("SearchHidePeacefulLobbies", false, "Search Hide Peaceful Lobbies", "Hide peaceful-mode lobbies in search results.");
+            _searchCrossplay = _preferences.CreateEntry("SearchCrossplay", true, "Search Crossplay", "Include crossplay lobbies in search results.");
             _messageOfTheDay = _preferences.CreateEntry("MessageOfTheDay", string.Empty, "Message of the Day", "Private chat message sent to each player when they join your hosted lobby. Leave empty to disable.");
             _showJoinMessages = _preferences.CreateEntry("ShowJoinMessages", true, "Show Join Messages", "Broadcast a chat message when a player joins your hosted lobby.");
             _showLeaveMessages = _preferences.CreateEntry("ShowLeaveMessages", true, "Show Leave Messages", "Broadcast a chat message when a player leaves your hosted lobby.");
@@ -200,6 +224,84 @@ namespace MultiplayerTools
                 return;
 
             _serverCapacity.Value = Math.Clamp(value, 1, 64);
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchMinPlayers(int value)
+        {
+            if (_searchMinPlayers == null)
+                return;
+
+            _searchMinPlayers.Value = Math.Clamp(value, 1, 64);
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchMaxPlayers(int value)
+        {
+            if (_searchMaxPlayers == null)
+                return;
+
+            _searchMaxPlayers.Value = value == 0 ? 0 : Math.Clamp(value, 1, 64);
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchShowLocked(bool value)
+        {
+            if (_searchShowLocked == null)
+                return;
+
+            _searchShowLocked.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchShowModded(bool value)
+        {
+            if (_searchShowModded == null)
+                return;
+
+            _searchShowModded.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchShowYourLanguageOnly(bool value)
+        {
+            if (_searchShowYourLanguageOnly == null)
+                return;
+
+            _searchShowYourLanguageOnly.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchOnlyPeacefulLobbies(bool value)
+        {
+            if (_searchOnlyPeacefulLobbies == null)
+                return;
+
+            _searchOnlyPeacefulLobbies.Value = value;
+            if (value && _searchHidePeacefulLobbies != null)
+                _searchHidePeacefulLobbies.Value = false;
+
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchHidePeacefulLobbies(bool value)
+        {
+            if (_searchHidePeacefulLobbies == null)
+                return;
+
+            _searchHidePeacefulLobbies.Value = value;
+            if (value && _searchOnlyPeacefulLobbies != null)
+                _searchOnlyPeacefulLobbies.Value = false;
+
+            MelonPreferences.Save();
+        }
+
+        public static void SetSearchCrossplay(bool value)
+        {
+            if (_searchCrossplay == null)
+                return;
+
+            _searchCrossplay.Value = value;
             MelonPreferences.Save();
         }
 

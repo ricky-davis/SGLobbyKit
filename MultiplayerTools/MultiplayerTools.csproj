@@ -635,6 +635,7 @@
     <Compile Include="Features/Settings/SettingsMenuView.cs" />
     <Compile Include="Features/Settings/SettingsPatches.cs" />
     <Compile Include="Features/Lobby/LobbyUiController.cs" />
+	<Compile Include="Features/Lobby/SearchLobbiesUiController.cs" />
     <Compile Include="Features/Lobby/MainMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
