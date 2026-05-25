@@ -7,7 +7,6 @@
 - [ ] Add vote kick system
 
 ## Lobby Search
-- [ ] Minimum players sliders
 - [x] Max Player slider goes to 64
 - [x] Max player slider is greater than or equal
 - [x] Remember search settings
