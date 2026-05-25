@@ -17,8 +17,7 @@
 -[x] MOTD
 -[x] Enable Bang Commands
 -[x] Server settings should not immediately apply. Have an apply button and try to updatelobby when pressed. Update MelonPrefs when pressed as well.
-- Lobby Name?
-- Max Players?
+
 
 ## Other
  - !help paging

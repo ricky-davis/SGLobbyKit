@@ -109,7 +109,7 @@ namespace MultiplayerTools.Features.Lobby
                 SetToggleWithoutNotify(controls.ShowOnlyYourLanguageToggle, MultiplayerToolsCore.SearchShowYourLanguageOnly);
                 SetToggleWithoutNotify(controls.OnlyPeacefulModeToggle, MultiplayerToolsCore.SearchOnlyPeacefulLobbies);
                 SetToggleWithoutNotify(controls.OnlyNonPeacefulModeToggle, MultiplayerToolsCore.SearchHidePeacefulLobbies);
-                SetToggleWithoutNotify(controls.CrossplayToggle, MultiplayerToolsCore.SearchCrossplay);
+                ApplyRegionMode(controls, MultiplayerToolsCore.SearchRegionMode);
             }
             catch (Exception ex)
             {
@@ -138,7 +138,7 @@ namespace MultiplayerTools.Features.Lobby
                 SaveToggleIfChanged(controls.ShowOnlyYourLanguageToggle, MultiplayerToolsCore.SearchShowYourLanguageOnly, MultiplayerToolsCore.SetSearchShowYourLanguageOnly);
                 SaveToggleIfChanged(controls.OnlyPeacefulModeToggle, MultiplayerToolsCore.SearchOnlyPeacefulLobbies, MultiplayerToolsCore.SetSearchOnlyPeacefulLobbies);
                 SaveToggleIfChanged(controls.OnlyNonPeacefulModeToggle, MultiplayerToolsCore.SearchHidePeacefulLobbies, MultiplayerToolsCore.SetSearchHidePeacefulLobbies);
-                SaveToggleIfChanged(controls.CrossplayToggle, MultiplayerToolsCore.SearchCrossplay, MultiplayerToolsCore.SetSearchCrossplay);
+                SaveRegionModeIfChanged(controls);
             }
             catch (Exception ex)
             {
@@ -199,6 +199,42 @@ namespace MultiplayerTools.Features.Lobby
                 setPreference(toggle.isOn);
         }
 
+        private static void ApplyRegionMode(LobbyExplorerControls controls, int regionMode)
+        {
+            Toggle[] toggles =
+            {
+                controls.RegionNearToggle,
+                controls.RegionNearbyToggle,
+                controls.RegionFarToggle,
+                controls.RegionWorldwideToggle
+            };
+
+            int selectedIndex = Math.Clamp(regionMode, 0, toggles.Length - 1);
+            for (int i = 0; i < toggles.Length; i++)
+                SetToggleWithoutNotify(toggles[i], i == selectedIndex);
+        }
+
+        private static void SaveRegionModeIfChanged(LobbyExplorerControls controls)
+        {
+            int? selectedRegionMode = GetSelectedRegionMode(controls);
+            if (selectedRegionMode.HasValue && selectedRegionMode.Value != MultiplayerToolsCore.SearchRegionMode)
+                MultiplayerToolsCore.SetSearchRegionMode(selectedRegionMode.Value);
+        }
+
+        private static int? GetSelectedRegionMode(LobbyExplorerControls controls)
+        {
+            if (controls.RegionNearToggle != null && controls.RegionNearToggle.isOn)
+                return 0;
+            if (controls.RegionNearbyToggle != null && controls.RegionNearbyToggle.isOn)
+                return 1;
+            if (controls.RegionFarToggle != null && controls.RegionFarToggle.isOn)
+                return 2;
+            if (controls.RegionWorldwideToggle != null && controls.RegionWorldwideToggle.isOn)
+                return 3;
+
+            return null;
+        }
+
         private static LobbyExplorerControls GetControls(Transform root)
         {
             return new LobbyExplorerControls
@@ -209,7 +245,10 @@ namespace MultiplayerTools.Features.Lobby
                 OnlyPeacefulModeToggle = FindToggle(root, "Panel/layout group/Filter Menu/peaceful/(Toggle) only peaceful lobbies", "only peaceful lobbies"),
                 OnlyNonPeacefulModeToggle = FindToggle(root, "Panel/layout group/Filter Menu/peaceful/(Toggle) no peaceful lobbies", "no peaceful lobbies"),
                 ShowOnlyYourLanguageToggle = FindToggle(root, "Panel/layout group/Filter Menu/Lobby Filters/(Toggle) show your language only", "show your language only"),
-                CrossplayToggle = FindToggle(root, "Panel/layout group/Filter Menu/Lobby Filters/(Toggle) crossplay", "crossplay")
+                RegionNearToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (1)", "near "),
+                RegionNearbyToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (2)", "nearby regions"),
+                RegionFarToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (3)", "far "),
+                RegionWorldwideToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (4)", "worldwide")
             };
         }
 
@@ -261,7 +300,10 @@ namespace MultiplayerTools.Features.Lobby
             public Toggle OnlyPeacefulModeToggle { get; set; }
             public Toggle OnlyNonPeacefulModeToggle { get; set; }
             public Toggle ShowOnlyYourLanguageToggle { get; set; }
-            public Toggle CrossplayToggle { get; set; }
+            public Toggle RegionNearToggle { get; set; }
+            public Toggle RegionNearbyToggle { get; set; }
+            public Toggle RegionFarToggle { get; set; }
+            public Toggle RegionWorldwideToggle { get; set; }
         }
     }
 }
