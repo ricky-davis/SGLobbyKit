@@ -9,7 +9,7 @@
 ## Lobby Search
 - [ ] Minimum players sliders
 - [x] Max Player slider goes to 64
-- [ ] Max player slider is inclusive of greater than?
+- [x] Max player slider is inclusive of greater than?
 - [x] Remember search settings
 
 
