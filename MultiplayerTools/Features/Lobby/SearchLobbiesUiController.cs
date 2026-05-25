@@ -110,6 +110,7 @@ namespace MultiplayerTools.Features.Lobby
                 SetToggleWithoutNotify(controls.OnlyPeacefulModeToggle, MultiplayerToolsCore.SearchOnlyPeacefulLobbies);
                 SetToggleWithoutNotify(controls.OnlyNonPeacefulModeToggle, MultiplayerToolsCore.SearchHidePeacefulLobbies);
                 ApplyRegionMode(controls, MultiplayerToolsCore.SearchRegionMode);
+                HideButton(controls.CreateNewLobbyButton);
             }
             catch (Exception ex)
             {
@@ -248,7 +249,8 @@ namespace MultiplayerTools.Features.Lobby
                 RegionNearToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (1)", "near "),
                 RegionNearbyToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (2)", "nearby regions"),
                 RegionFarToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (3)", "far "),
-                RegionWorldwideToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (4)", "worldwide")
+                RegionWorldwideToggle = FindToggle(root, "Panel/layout group/Filter Menu/region/(Toggle) Settings Toggle (4)", "worldwide"),
+                CreateNewLobbyButton = FindButton(root, "Panel/layout group/List/(Button) Create New Lobby")
             };
         }
 
@@ -268,6 +270,23 @@ namespace MultiplayerTools.Features.Lobby
                 return toggle;
 
             return FindToggleByLabel(root, label);
+        }
+
+        private static Button FindButton(Transform root, string path)
+        {
+            Transform transform = root?.Find(path);
+            return transform != null
+                ? transform.GetComponent<Button>() ?? transform.GetComponentInChildren<Button>(true)
+                : null;
+        }
+
+        private static void HideButton(Button button)
+        {
+            if (button == null)
+                return;
+
+            button.interactable = false;
+            button.gameObject.SetActive(false);
         }
 
         private static Toggle FindToggleByLabel(Transform root, string label)
@@ -304,6 +323,7 @@ namespace MultiplayerTools.Features.Lobby
             public Toggle RegionNearbyToggle { get; set; }
             public Toggle RegionFarToggle { get; set; }
             public Toggle RegionWorldwideToggle { get; set; }
+            public Button CreateNewLobbyButton { get; set; }
         }
     }
 }
