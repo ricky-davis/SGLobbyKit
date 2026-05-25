@@ -50,11 +50,12 @@ namespace MultiplayerTools.Patches
 
             try
             {
+                // We do nothing with this right now, but it's here if we ever decide to add more search parameters or add a minimum player count filter to the UI.
                 object searchParameters = __args[0];
                 LobbySearchSetParameterOptions option = BuildInt64(
                     LobbyInterface.SEARCH_MINCURRENTMEMBERS,
                     1,
-                    ComparisonOp.Greaterthanorequal);
+                    ComparisonOp.Greaterthanorequal); 
 
                 searchParameters.GetType().GetMethod("Add")?.Invoke(searchParameters, new object[] { option });
             }
