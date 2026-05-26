@@ -1,77 +1,26 @@
 using System;
 using System.Collections.Generic;
-using HarmonyLib;
 using Il2Cpp;
 using Il2CppEpic.OnlineServices;
-using Il2Cpp_Scripts.UI.Pre_Game;
 using Il2CppPlayEveryWare.EpicOnlineServices.Samples;
 using Il2CppTMPro;
 using UnityEngine;
 
-namespace MultiplayerTools.Patches
+namespace MultiplayerTools.Features.PlayerList
 {
-    [HarmonyPatch]
-    internal static class PlayerListPatches
+    internal sealed class PlayerListTimerController
     {
         private const string TimerTextName = "MultiplayerToolsSessionTimerText";
-        private static readonly Dictionary<int, PlayerRowTimer> RowTimers = new Dictionary<int, PlayerRowTimer>();
-        private static float _nextDisplayUpdateTime;
+        private readonly Dictionary<int, PlayerRowTimer> _rowTimers = new Dictionary<int, PlayerRowTimer>();
+        private float _nextDisplayUpdateTime;
 
-        [HarmonyPatch(typeof(PlayersListNameItem), "InitializeWithDetails")]
-        [HarmonyPostfix]
-        private static void PlayersListNameItem_InitializeWithDetails_Postfix(
-            PlayersListNameItem __instance,
-            PlayerListPlayerActionsMenu actionMenu,
-            LobbyMember lobbyMember,
-            ProductUserId lobbyLeaderId)
+        public static PlayerListTimerController Instance { get; } = new PlayerListTimerController();
+
+        private PlayerListTimerController()
         {
-            try
-            {
-                Debug.Log("[MultiplayerTools] PlayersListNameItem_InitializeWithDetails_Postfix called");
-                BindPlayerRow(__instance, lobbyMember, lobbyLeaderId);
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[MultiplayerTools] Failed to bind player row session timer: {ex}");
-            }
         }
 
-        [HarmonyPatch(typeof(PlayersListNameItem), "OnDestroy")]
-        [HarmonyPostfix]
-        private static void PlayersListNameItem_OnDestroy_Postfix(PlayersListNameItem __instance)
-        {
-            if (__instance == null)
-                return;
-
-            int rowId = __instance.GetInstanceID();
-            if (RowTimers.TryGetValue(rowId, out PlayerRowTimer timer))
-            {
-                timer.IsActive = false;
-                DestroyTimerText(timer);
-            }
-
-            RowTimers.Remove(rowId);
-        }
-
-        [HarmonyPatch(typeof(PlayerListDisplayUI), "Update")]
-        [HarmonyPostfix]
-        private static void PlayerListDisplayUI_Update_Postfix()
-        {
-            try
-            {
-                if (Time.unscaledTime < _nextDisplayUpdateTime)
-                    return;
-
-                _nextDisplayUpdateTime = Time.unscaledTime + 1f;
-                UpdateBoundRows();
-            }
-            catch (Exception ex)
-            {
-                Debug.LogWarning($"[MultiplayerTools] Failed to update player list session timers: {ex}");
-            }
-        }
-
-        private static void BindPlayerRow(PlayersListNameItem row, LobbyMember lobbyMember, ProductUserId lobbyLeaderId)
+        public void BindRow(PlayersListNameItem row, LobbyMember lobbyMember, ProductUserId lobbyLeaderId)
         {
             if (row == null)
             {
@@ -99,7 +48,7 @@ namespace MultiplayerTools.Patches
             if (string.IsNullOrWhiteSpace(baseName))
                 baseName = productId;
 
-            if (RowTimers.TryGetValue(rowId, out PlayerRowTimer existingTimer))
+            if (_rowTimers.TryGetValue(rowId, out PlayerRowTimer existingTimer))
             {
                 existingTimer.IsActive = false;
                 DestroyTimerText(existingTimer);
@@ -117,12 +66,36 @@ namespace MultiplayerTools.Patches
 
             bool isLobbyOwner = IsLobbyOwner(productId, lobbyLeaderId);
             var timer = new PlayerRowTimer(row, nameText, timerText, productId, StripSessionTimer(baseName), isLobbyOwner);
-            RowTimers[rowId] = timer;
+            _rowTimers[rowId] = timer;
             Debug.Log($"[MultiplayerTools] Bound player row session timer: row={rowId}, productId={productId}, baseName={timer.BaseName}, isLobbyOwner={timer.IsLobbyOwner}");
             ApplySessionTimer(timer);
         }
 
-        private static void ApplySessionTimer(PlayerRowTimer timer)
+        public void MarkRowDestroyed(PlayersListNameItem row)
+        {
+            if (row == null)
+                return;
+
+            int rowId = row.GetInstanceID();
+            if (_rowTimers.TryGetValue(rowId, out PlayerRowTimer timer))
+            {
+                timer.IsActive = false;
+                DestroyTimerText(timer);
+            }
+
+            _rowTimers.Remove(rowId);
+        }
+
+        public void UpdateVisibleRows()
+        {
+            if (Time.unscaledTime < _nextDisplayUpdateTime)
+                return;
+
+            _nextDisplayUpdateTime = Time.unscaledTime + 1f;
+            UpdateBoundRows();
+        }
+
+        private void ApplySessionTimer(PlayerRowTimer timer)
         {
             if (timer == null || !timer.IsActive || MultiplayerToolsCore.Instance == null)
                 return;
@@ -148,13 +121,13 @@ namespace MultiplayerTools.Patches
             }
         }
 
-        private static void UpdateBoundRows()
+        private void UpdateBoundRows()
         {
-            if (RowTimers.Count == 0)
+            if (_rowTimers.Count == 0)
                 return;
 
             List<int> staleRowIds = null;
-            foreach (KeyValuePair<int, PlayerRowTimer> entry in RowTimers)
+            foreach (KeyValuePair<int, PlayerRowTimer> entry in _rowTimers)
             {
                 PlayerRowTimer timer = entry.Value;
                 if (timer == null || !timer.IsActive || timer.Row == null || timer.NameText == null || timer.TimerText == null)
@@ -173,7 +146,7 @@ namespace MultiplayerTools.Patches
                 return;
 
             for (int i = 0; i < staleRowIds.Count; i++)
-                RowTimers.Remove(staleRowIds[i]);
+                _rowTimers.Remove(staleRowIds[i]);
         }
 
         private static bool TryReadLobbyMember(LobbyMember lobbyMember, out string productId, out string displayName)
@@ -204,8 +177,7 @@ namespace MultiplayerTools.Patches
             if (string.IsNullOrWhiteSpace(productId) || lobbyLeaderId == null)
                 return false;
 
-            string leaderProductId = lobbyLeaderId.ToString();
-            return productId == leaderProductId;
+            return productId == lobbyLeaderId.ToString();
         }
 
         private static TMP_Text CreateTimerText(TMP_Text nameText)
@@ -222,6 +194,7 @@ namespace MultiplayerTools.Patches
             timerText.alignment = TextAlignmentOptions.Right;
             timerText.raycastTarget = false;
             timerText.enableWordWrapping = false;
+            ConfigureRichText(timerText);
 
             RectTransform sourceRect = nameText.rectTransform;
             RectTransform timerRect = timerText.rectTransform;
@@ -289,10 +262,7 @@ namespace MultiplayerTools.Patches
             for (int i = 0; i < texts.Length; i++)
             {
                 TMP_Text text = texts[i];
-                if (text == null)
-                    continue;
-
-                if (text.name == TimerTextName)
+                if (text == null || text.name == TimerTextName)
                     continue;
 
                 string value = StripSessionTimer(text.text);

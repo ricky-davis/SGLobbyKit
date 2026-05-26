@@ -640,7 +640,8 @@
     <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
     <Compile Include="Features/Lobby/LobbyPatches.cs" />
-		<Compile Include="Patches/PlayerListPatches.cs" />
+    <Compile Include="Features/PlayerList/PlayerListTimerController.cs" />
+    <Compile Include="Features/PlayerList/PlayerListPatches.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
 		<Content Include="Directory.Build.props" />
