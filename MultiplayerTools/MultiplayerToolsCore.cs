@@ -1,8 +1,10 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using System.Linq;
 using HarmonyLib;
 using Il2Cpp;
+using Il2CppFishNet;
 using MelonLoader;
 using MelonLoader.NativeUtils;
 using UnityEngine;
@@ -17,6 +19,8 @@ namespace MultiplayerTools
         public static MultiplayerToolsCore Instance;
         private PlayerReference localPlayer;
         private readonly List<PlayerReference> players = new List<PlayerReference>();
+        private readonly Dictionary<int, double> _playerJoinTimes = new Dictionary<int, double>();
+        private readonly Dictionary<string, double> _playerJoinTimesByProductId = new Dictionary<string, double>();
         public static bool isHost = false;
 
         private static MelonPreferences_Category _preferences;
@@ -109,6 +113,9 @@ namespace MultiplayerTools
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             ReferencesLoaded = false;
+            players.Clear();
+            _playerJoinTimes.Clear();
+            _playerJoinTimesByProductId.Clear();
             MelonCoroutines.Start(LoadReferences());
         }
 
@@ -155,6 +162,9 @@ namespace MultiplayerTools
             if (isNewConnection)
                 players.Add(p);
 
+            if (isNewConnection && (isHost || isLocalPlayer))
+                TrackPlayerJoinTime(p, GetLobbyUptimeSeconds());
+
             if (isLocalPlayer)
             {
                 localPlayer = p;
@@ -184,6 +194,9 @@ namespace MultiplayerTools
             }
 
             players.RemoveAll(player => player == null || player.ConnectionID == removedPlayer.ConnectionID);
+            _playerJoinTimes.Remove(removedPlayer.ConnectionID);
+            if (!string.IsNullOrWhiteSpace(removedPlayer.ProductUserId))
+                _playerJoinTimesByProductId.Remove(removedPlayer.ProductUserId);
             Patches.ChatSystem.ForgetMotdRecipient(removedPlayer.ConnectionID);
             Patches.ChatSystem.ForgetTeleportRequests(removedPlayer.ConnectionID);
 
@@ -201,6 +214,129 @@ namespace MultiplayerTools
                 return null;
             }
             return localPlayer;
+        }
+
+        public bool TryGetPlayerJoinTime(PlayerReference playerReference, out double joinTimeSeconds)
+        {
+            joinTimeSeconds = 0d;
+
+            if (!isHost || playerReference == null)
+                return false;
+
+            return _playerJoinTimes.TryGetValue(playerReference.ConnectionID, out joinTimeSeconds);
+        }
+
+        public bool TryGetPlayerSessionDuration(PlayerReference playerReference, out double sessionSeconds)
+        {
+            sessionSeconds = 0d;
+
+            if (!isHost || playerReference == null)
+                return false;
+
+            double currentUptimeSeconds = GetLobbyUptimeSeconds();
+            if (!_playerJoinTimes.TryGetValue(playerReference.ConnectionID, out double joinTimeSeconds))
+            {
+                joinTimeSeconds = playerReference.ConnectionID == 32767 ? 0d : currentUptimeSeconds;
+                TrackPlayerJoinTime(playerReference, joinTimeSeconds);
+            }
+
+            sessionSeconds = currentUptimeSeconds - joinTimeSeconds;
+            return true;
+        }
+
+        public bool TryGetPlayerSessionDuration(string productUserId, out double sessionSeconds)
+        {
+            sessionSeconds = 0d;
+
+            if (!isHost || string.IsNullOrWhiteSpace(productUserId))
+                return false;
+
+            double currentUptimeSeconds = GetLobbyUptimeSeconds();
+            if (!_playerJoinTimesByProductId.TryGetValue(productUserId, out double joinTimeSeconds))
+            {
+                joinTimeSeconds = currentUptimeSeconds;
+                _playerJoinTimesByProductId[productUserId] = joinTimeSeconds;
+            }
+
+            sessionSeconds = currentUptimeSeconds - joinTimeSeconds;
+            return true;
+        }
+
+        public bool TryGetPlayerListTimerDuration(string productUserId, bool isLobbyOwner, out double sessionSeconds)
+        {
+            sessionSeconds = 0d;
+
+            if (string.IsNullOrWhiteSpace(productUserId))
+                return false;
+
+            if (!isHost)
+            {
+                double currentUptimeSeconds = GetLobbyUptimeSeconds();
+                if (isLobbyOwner)
+                {
+                    sessionSeconds = currentUptimeSeconds;
+                    return true;
+                }
+
+                if (!IsLocalPlayerProductId(productUserId))
+                    return false;
+
+                if (!_playerJoinTimesByProductId.TryGetValue(productUserId, out double joinTimeSeconds))
+                {
+                    joinTimeSeconds = currentUptimeSeconds;
+                    _playerJoinTimesByProductId[productUserId] = joinTimeSeconds;
+                }
+
+                sessionSeconds = currentUptimeSeconds - joinTimeSeconds;
+                return true;
+            }
+
+            return TryGetPlayerSessionDuration(productUserId, out sessionSeconds);
+        }
+
+        private bool IsLocalPlayerProductId(string productUserId)
+        {
+            return localPlayer != null
+                && !string.IsNullOrWhiteSpace(localPlayer.ProductUserId)
+                && string.Equals(localPlayer.ProductUserId, productUserId, StringComparison.Ordinal);
+        }
+
+        private void TrackPlayerJoinTime(PlayerReference playerReference, double joinTimeSeconds)
+        {
+            _playerJoinTimes[playerReference.ConnectionID] = joinTimeSeconds;
+
+            if (!string.IsNullOrWhiteSpace(playerReference.ProductUserId))
+                _playerJoinTimesByProductId[playerReference.ProductUserId] = joinTimeSeconds;
+        }
+
+        public static string FormatLobbyJoinTime(double uptimeSeconds)
+        {
+            if (uptimeSeconds < 0d)
+                uptimeSeconds = 0d;
+
+            TimeSpan timeSpan = TimeSpan.FromSeconds(uptimeSeconds);
+            if (timeSpan.TotalHours >= 1d)
+                return $"{(int)timeSpan.TotalHours}:{timeSpan.Minutes:00}:{timeSpan.Seconds:00}";
+
+            return $"{(int)timeSpan.TotalMinutes}:{timeSpan.Seconds:00}";
+        }
+
+        private static double GetLobbyUptimeSeconds()
+        {
+            var timeManager = InstanceFinder.TimeManager;
+            if (timeManager == null)
+                return Time.unscaledTimeAsDouble;
+
+            if (timeManager.Tick > 0)
+                return timeManager.TicksToTime(timeManager.Tick);
+
+            if (timeManager.ServerUptime > 0f)
+                return timeManager.ServerUptime;
+
+            if (timeManager.ClientUptime > 0f)
+                return timeManager.ClientUptime;
+
+            return Time.unscaledTimeAsDouble;
         }
 
         public static void SetEnableGuestBangCommands(bool value)
