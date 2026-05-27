@@ -21,3 +21,5 @@
 
 ## Other
  - !help paging
+ - Offline mode?
+ - Proximity chat range
