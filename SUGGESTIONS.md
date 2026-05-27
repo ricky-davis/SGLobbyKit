@@ -1,4 +1,4 @@
-# MultiplayerTools Suggestions
+# LobbyKit Suggestions
 
 ## Status Legend
 
@@ -38,7 +38,7 @@
 
 - [Already Implemented] Enhanced player list with join time.
 
-- [Already Implemented] In-game MultiplayerTools settings panel.
+- [Already Implemented] In-game LobbyKit settings panel.
   Area: Config / Preferences.
 
 ## Base Game (Rejected)
