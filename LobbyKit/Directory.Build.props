@@ -10,4 +10,9 @@
     <DeployMod Condition="'$(DeployMod)' == '' and Exists('$(GamePath)')">true</DeployMod>
     <DeployMod Condition="'$(DeployMod)' == ''">false</DeployMod>
   </PropertyGroup>
+  <PropertyGroup>
+    <!-- Centralized package/project version and author -->
+    <Version>0.1.0</Version>
+    <Authors>Spyci</Authors>
+  </PropertyGroup>
 </Project>

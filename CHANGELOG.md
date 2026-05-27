@@ -2,15 +2,19 @@
 
 All notable changes to this project will be documented in this file.
 
-## [Unreleased]
+## [0.1.0] - 2026-05-26
+
 ### Added
-- `ChatSystem.cs` split out as dedicated chat command system file.
-- `Utils.cs` for consolidated player-finding helpers.
 
-### Changed
-- Reorganized patch/features structure in `MaxPlayersPatch.cs`.
-- Moved chat broadcast and fake server player-reference logic into `ChatSystem`.
-- Updated project compile includes to match new file layout.
-
-### Fixed
-- Corrected source include name mismatch (`ChatCommandSystem.cs` -> `ChatSystem.cs`).
+- Extended host lobby capacity support up to 64 players.
+- Custom lobby name input and saved create-lobby defaults.
+- Saved lobby options for public/private, password protection, peaceful mode, and text-chat-only mode.
+- Saved lobby search preferences, including max players, locked lobbies, modded lobbies, language filtering, peaceful-mode filtering, and region mode.
+- Inclusive max-player lobby search filtering.
+- Lobby search sorting by current player count.
+- Player list session timers.
+- Host settings menu opened with `!settings`.
+- Message of the day support with `!motd`.
+- Join and leave announcement messages with configurable size.
+- Guest bang command toggle with `!bc`.
+- Teleport chat commands: `!tp`, `!tpme`, `!tpa`, and host-only `!tpf`.

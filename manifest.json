@@ -1,0 +1,9 @@
+{
+  "name": "LobbyKit",
+  "version_number": "0.1.0",
+  "website_url": "",
+  "description": "Host and lobby quality-of-life tools for Sledding Game: bigger lobbies, saved lobby/search settings, player timers, MOTD, and teleport commands.",
+  "dependencies": [
+    "LavaGang-MelonLoader-0.7.3"
+  ]
+}

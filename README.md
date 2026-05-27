@@ -19,6 +19,7 @@ The internal project is named `LobbyKit`, matching the mod package name.
 
 | Command | Host only | Description |
 | --- | --- | --- |
+| `!!` | No | Repeat last command |
 | `!settings` | Yes | Opens the in-game LobbyKit settings menu. |
 | `!motd [message]` | Set: yes | Shows the message of the day. Hosts can pass a message to update it. |
 | `!bc <on\|off>` | Yes | Enables or disables guest bang commands. |
@@ -43,4 +44,3 @@ Install with Gale. MelonLoader is declared as a dependency.
 ## Configuration
 
 Most options are available in-game through `!settings` while hosting. The mod also stores preferences through MelonLoader under the `LobbyKit` category.
-

@@ -10,8 +10,6 @@ using MelonLoader.NativeUtils;
 using UnityEngine;
 using Object = UnityEngine.Object;
 
-[assembly: MelonInfo(typeof(LobbyKit.LobbyKitCore), "LobbyKit", "0.1.0", "Spyci")]
-
 namespace LobbyKit
 {
     public class LobbyKitCore : MelonMod
