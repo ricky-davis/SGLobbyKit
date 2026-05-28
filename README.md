@@ -64,6 +64,7 @@ Required repository secret:
 
 - `THUNDERSTORE_TOKEN`: Thunderstore service account token (used as `TCLI_AUTH_TOKEN`).
 - `SGREFROOT_TOKEN`: GitHub token with read access to `ricky-davis/SGRefRoot` (used to fetch `Il2CppAssemblies` and `net6` refs).
+- `RELEASE_WORKFLOW_TOKEN`: PAT used by `github-release.yml` to create GitHub Releases so `release`-triggered workflows run.
 
 ### Local Pre-Commit Hook
 
