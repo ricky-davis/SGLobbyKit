@@ -55,7 +55,7 @@ This repository includes GitHub Actions workflows for Thunderstore packaging and
 - `.github/workflows/thunderstore-build.yml`
   - Runs on push/PR/manual dispatch.
   - Builds `LobbyKit` and uploads a Thunderstore zip artifact.
-- `.github/workflows/thunderstore-release.yml`
+- `.github/workflows/thunderstore-publish.yml`
   - Runs when a GitHub Release is published (or manually via workflow dispatch).
   - Builds and publishes with `tcli publish`.
   - All workflows accept `dryrun` on manual dispatch; `dryrun=true` echoes commands and skips execution-sensitive steps.
