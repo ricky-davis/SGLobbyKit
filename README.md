@@ -4,6 +4,10 @@ Host and lobby quality-of-life tools for **Sledding Game**.
 
 The internal project is named `LobbyKit`, matching the mod package name.
 
+## Host Requirement
+
+LobbyKit is primarily a host/server-side mod. Most functionality (especially chat commands) is driven by the lobby host having LobbyKit installed. Clients generally do not need to install LobbyKit to join and use host-provided features.
+
 ## Features
 
 - Host lobbies with up to 64 players.
@@ -40,6 +44,8 @@ Install with Gale. MelonLoader is declared as a dependency.
 2. Launch the game once so MelonLoader generates its folders and IL2CPP assemblies.
 3. Copy `LobbyKit.dll` into the game's `Mods/` folder.
 4. Start the game through MelonLoader.
+
+For hosted-lobby features, install LobbyKit on the host machine; clients typically do not need a local install.
 
 ## Configuration
 
