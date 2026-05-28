@@ -2,8 +2,6 @@
 
 Host and lobby quality-of-life tools for **Sledding Game**.
 
-The internal project is named `LobbyKit`, matching the mod package name.
-
 ## Host Requirement
 
 LobbyKit is primarily a host/server-side mod. Most functionality (especially chat commands) is driven by the lobby host having LobbyKit installed. Clients generally do not need to install LobbyKit to join and use host-provided features.
@@ -34,9 +32,9 @@ LobbyKit is primarily a host/server-side mod. Most functionality (especially cha
 
 ## Installation
 
-### Gale
+### Gale / r2modman
 
-Install with Gale. MelonLoader is declared as a dependency.
+Install with Gale or r2modman. MelonLoader is declared as a dependency.
 
 ### Manual
 
