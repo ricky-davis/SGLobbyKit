@@ -23,3 +23,8 @@
  - !help paging
  - Offline mode?
  - Proximity chat range
+
+
+
+- [x] Leaving a lobby you host doesn't reset player list so MOTD isn't resent if you re-start lobby
+- [x] Auto-restart crashed lobbies

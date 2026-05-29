@@ -20,6 +20,7 @@ namespace LobbyKit
         private readonly Dictionary<int, double> _playerJoinTimes = new Dictionary<int, double>();
         private readonly Dictionary<string, double> _playerJoinTimesByProductId = new Dictionary<string, double>();
         public static bool isHost = false;
+        public static bool WasHosting = false;
 
         private static MelonPreferences_Category _preferences;
         private static MelonPreferences_Entry<bool> _enableGuestBangCommands;
@@ -45,6 +46,7 @@ namespace LobbyKit
         private static MelonPreferences_Entry<bool> _showLeaveMessages;
         private static MelonPreferences_Entry<int> _joinMessageSize;
         private static MelonPreferences_Entry<int> _leaveMessageSize;
+        private static MelonPreferences_Entry<bool> _autoRestartOnCrash;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -67,6 +69,7 @@ namespace LobbyKit
         public static bool ShowLeaveMessages => _showLeaveMessages?.Value ?? true;
         public static int JoinMessageSize => _joinMessageSize?.Value ?? 75;
         public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
+        public static bool AutoRestartOnCrash => _autoRestartOnCrash?.Value ?? false;
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -103,6 +106,7 @@ namespace LobbyKit
             _showLeaveMessages = _preferences.CreateEntry("ShowLeaveMessages", true, "Show Leave Messages", "Broadcast a chat message when a player leaves your hosted lobby.");
             _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
+            _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
@@ -114,6 +118,7 @@ namespace LobbyKit
             players.Clear();
             _playerJoinTimes.Clear();
             _playerJoinTimesByProductId.Clear();
+            Patches.ChatSystem.ResetSessionState();
             MelonCoroutines.Start(LoadReferences());
         }
 
@@ -167,6 +172,8 @@ namespace LobbyKit
             {
                 localPlayer = p;
                 isHost = p.ConnectionID == 32767;
+                if (isHost)
+                    WasHosting = true;
             }
             else if (isHost && isNewConnection && ShowJoinMessages)
             {
@@ -524,6 +531,15 @@ namespace LobbyKit
                 return;
 
             _leaveMessageSize.Value = Math.Clamp(value, 50, 100);
+            MelonPreferences.Save();
+        }
+
+        public static void SetAutoRestartOnCrash(bool value)
+        {
+            if (_autoRestartOnCrash == null)
+                return;
+
+            _autoRestartOnCrash.Value = value;
             MelonPreferences.Save();
         }
 

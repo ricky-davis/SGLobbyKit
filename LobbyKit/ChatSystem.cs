@@ -224,6 +224,14 @@ namespace LobbyKit.Patches
             }
         }
 
+        public static void ResetSessionState()
+        {
+            MotdRecipients.Clear();
+            TeleportRequests.Clear();
+            LastCommandBySource.Clear();
+            LastExplicitCommandBySource.Clear();
+        }
+
         private static bool TryHandleCommand(string message, int connectionId, bool isHostLocal)
         {
             string trimmedMessage = message.Trim();

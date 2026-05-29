@@ -85,6 +85,11 @@ namespace LobbyKit.Features.Settings
                 "Enable Guest !Bang Commands",
                 draft => draft.EnableGuestBangCommands,
                 (draft, value) => draft.EnableGuestBangCommands = value),
+            new ToggleSettingsField(
+                "auto-restart-on-crash",
+                "Auto-Restart Lobby On Crash",
+                draft => draft.AutoRestartOnCrash,
+                (draft, value) => draft.AutoRestartOnCrash = value),
             new TextSettingsField(
                 "message-of-the-day",
                 "Message of the Day",
