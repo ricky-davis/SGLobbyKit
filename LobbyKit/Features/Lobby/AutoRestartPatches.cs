@@ -45,6 +45,7 @@ namespace LobbyKit.Patches
         private static void UiReferenceController_LeaveGame_Prefix()
         {
             LobbyKitCore.WasHosting = false;
+            ChatSystem.ResetSessionState();
         }
 
         [HarmonyPatch(typeof(UiReferenceController), "ReturnToMainMenu")]
@@ -125,6 +126,7 @@ namespace LobbyKit.Patches
         private static IEnumerator AutoRestartLobbyCoroutine()
         {
             MelonLogger.Msg("[LobbyKit] Lobby crashed — restarting lobby...");
+            ChatSystem.ResetSessionState();
 
             // Brief delay for the main menu to finish its UI transition
             for (int i = 0; i < 120; i++)

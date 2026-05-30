@@ -295,12 +295,15 @@ namespace LobbyKit.Patches
 
         private static IEnumerator SendMotdWhenReady(int connectionId)
         {
-            for (int frame = 0; frame < 60; frame++)
+            bool isLocal = IsLocalConnectionId(connectionId);
+
+            for (int frame = 0; frame < 300; frame++)
             {
-                var serverManager = InstanceFinder.ServerManager;
-                if (serverManager != null &&
-                    serverManager.Clients != null &&
-                    serverManager.Clients.TryGetValue(connectionId, out _))
+                bool ready = isLocal
+                    ? ChatManager.Instance != null
+                    : InstanceFinder.ServerManager?.Clients?.ContainsKey(connectionId) == true;
+
+                if (ready)
                 {
                     string motd = LobbyKitCore.MessageOfTheDay;
                     if (string.IsNullOrWhiteSpace(motd))
@@ -317,7 +320,7 @@ namespace LobbyKit.Patches
             }
 
             MotdRecipients.Remove(connectionId);
-            Debug.LogWarning($"[ChatSystem] MOTD was not sent: client {connectionId} was not ready.");
+            Debug.LogWarning($"[ChatSystem] MOTD was not sent: client {connectionId} was not ready after 300 frames.");
         }
 
         private static ChatMessage CreatePublicChatMessage(string text, string username, int showAboveUser)
