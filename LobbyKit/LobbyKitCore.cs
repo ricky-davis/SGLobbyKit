@@ -110,6 +110,7 @@ namespace LobbyKit
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
+            Features.Anticheat.GenericServerRpcRateLimitPatch.ApplyPatches(HarmonyInstance);
         }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
@@ -192,10 +193,13 @@ namespace LobbyKit
 
             bool wasTrackedPlayer = players.Any(player => player != null && player.ConnectionID == removedPlayer.ConnectionID);
             bool isLocalPlayer = removedPlayer.IsLocalPlayerInstance();
-            if (isHost && wasTrackedPlayer && !isLocalPlayer && ShowLeaveMessages)
+            if (isHost && wasTrackedPlayer && !isLocalPlayer)
             {
                 string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(removedPlayer.Username) ? "A player" : removedPlayer.Username);
-                Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#FA0>{username} left.");
+                if (Features.Anticheat.KickAnnouncer.TryConsume(removedPlayer.ConnectionID, out string kickReason))
+                    Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#F44>{username} {kickReason}.");
+                else if (ShowLeaveMessages)
+                    Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#FA0>{username} left.");
             }
 
             players.RemoveAll(player => player == null || player.ConnectionID == removedPlayer.ConnectionID);
