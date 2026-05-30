@@ -648,10 +648,11 @@
     <Compile Include="Features/Lobby/MainMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
-    <Compile Include="Features/Anticheat/CrashProtectionPatches.cs" />
     <Compile Include="Features/Anticheat/GenericServerRpcRateLimitPatch.cs" />
     <Compile Include="Features/Anticheat/KickAnnouncer.cs" />
+    <Compile Include="Features/Lobby/CrashProtectionPatches.cs" />
     <Compile Include="Features/Lobby/LobbyPatches.cs" />
+    <Compile Include="Features/Lobby/SilentCrashDetectionPatches.cs" />
     <Compile Include="Features/Lobby/AutoRestartPatches.cs" />
     <Compile Include="Features/PlayerList/PlayerListTimerController.cs" />
     <Compile Include="Features/PlayerList/PlayerListPatches.cs" />

@@ -177,7 +177,10 @@ namespace LobbyKit
                 localPlayer = p;
                 isHost = p.ConnectionID == 32767;
                 if (isHost)
+                {
                     WasHosting = true;
+                    Patches.SilentCrashDetectionPatches.StartPolling();
+                }
             }
             else if (isHost && isNewConnection && ShowJoinMessages)
             {
@@ -216,6 +219,7 @@ namespace LobbyKit
             {
                 localPlayer = null;
                 isHost = false;
+                Patches.SilentCrashDetectionPatches.StopPolling();
             }
         }
 
