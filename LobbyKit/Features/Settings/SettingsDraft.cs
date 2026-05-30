@@ -19,6 +19,7 @@ namespace LobbyKit.Features.Settings
         public int JoinMessageSize { get; set; }
         public int LeaveMessageSize { get; set; }
         public bool AutoRestartOnCrash { get; set; }
+        public bool EnableAnticheat { get; set; }
 
         public static SettingsDraft FromCurrent()
         {
@@ -37,7 +38,8 @@ namespace LobbyKit.Features.Settings
                 ShowLeaveMessages = LobbyKitCore.ShowLeaveMessages,
                 JoinMessageSize = LobbyKitCore.JoinMessageSize,
                 LeaveMessageSize = LobbyKitCore.LeaveMessageSize,
-                AutoRestartOnCrash = LobbyKitCore.AutoRestartOnCrash
+                AutoRestartOnCrash = LobbyKitCore.AutoRestartOnCrash,
+                EnableAnticheat = LobbyKitCore.EnableAnticheat
             };
         }
 
@@ -58,7 +60,8 @@ namespace LobbyKit.Features.Settings
                 ShowLeaveMessages = ShowLeaveMessages,
                 JoinMessageSize = JoinMessageSize,
                 LeaveMessageSize = LeaveMessageSize,
-                AutoRestartOnCrash = AutoRestartOnCrash
+                AutoRestartOnCrash = AutoRestartOnCrash,
+                EnableAnticheat = EnableAnticheat
             };
         }
 
@@ -80,7 +83,8 @@ namespace LobbyKit.Features.Settings
                    ShowLeaveMessages == other.ShowLeaveMessages &&
                    JoinMessageSize == other.JoinMessageSize &&
                    LeaveMessageSize == other.LeaveMessageSize &&
-                   AutoRestartOnCrash == other.AutoRestartOnCrash;
+                   AutoRestartOnCrash == other.AutoRestartOnCrash &&
+                   EnableAnticheat == other.EnableAnticheat;
         }
 
         public void Apply()
@@ -99,6 +103,7 @@ namespace LobbyKit.Features.Settings
             LobbyKitCore.SetJoinMessageSize(JoinMessageSize);
             LobbyKitCore.SetLeaveMessageSize(LeaveMessageSize);
             LobbyKitCore.SetAutoRestartOnCrash(AutoRestartOnCrash);
+            LobbyKitCore.SetEnableAnticheat(EnableAnticheat);
 
             LobbyUiController.Instance.RefreshCreateLobbyFromPreferences();
         }

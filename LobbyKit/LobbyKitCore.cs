@@ -47,6 +47,7 @@ namespace LobbyKit
         private static MelonPreferences_Entry<int> _joinMessageSize;
         private static MelonPreferences_Entry<int> _leaveMessageSize;
         private static MelonPreferences_Entry<bool> _autoRestartOnCrash;
+        private static MelonPreferences_Entry<bool> _enableAnticheat;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -70,6 +71,7 @@ namespace LobbyKit
         public static int JoinMessageSize => _joinMessageSize?.Value ?? 75;
         public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
         public static bool AutoRestartOnCrash => _autoRestartOnCrash?.Value ?? false;
+        public static bool EnableAnticheat => _enableAnticheat?.Value ?? false;
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -107,6 +109,7 @@ namespace LobbyKit
             _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
+            _enableAnticheat = _preferences.CreateEntry("EnableAnticheat", false, "Enable AntiCheat", "Rate-limit and kick clients who spam server RPCs.");
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
@@ -535,6 +538,15 @@ namespace LobbyKit
                 return;
 
             _leaveMessageSize.Value = Math.Clamp(value, 50, 100);
+            MelonPreferences.Save();
+        }
+
+        public static void SetEnableAnticheat(bool value)
+        {
+            if (_enableAnticheat == null)
+                return;
+
+            _enableAnticheat.Value = value;
             MelonPreferences.Save();
         }
 

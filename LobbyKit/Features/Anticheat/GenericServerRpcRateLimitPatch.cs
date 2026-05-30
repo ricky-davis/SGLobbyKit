@@ -16,6 +16,8 @@ namespace LobbyKit.Features.Anticheat
         // rates before committing to per-command limits.
         internal static bool LogAllRpcCalls = true;
 
+        private const int HostConnectionId = 32767;
+
         // Loose limit intended to catch actual spam, not restrict normal gameplay. Any faster than this number we treat as a potential exploit attempt.
         private const float MinInterval = 0.05f; // 50ms — max 20 calls/sec per client
 
@@ -86,6 +88,9 @@ namespace LobbyKit.Features.Anticheat
         private static bool Prefix(NetworkBehaviour __instance, MethodBase __originalMethod)
         {
             int ownerId = __instance.OwnerId;
+
+            if (ownerId == HostConnectionId || !LobbyKitCore.EnableAnticheat)
+                return true;
             float now = Time.realtimeSinceStartup;
             int token = __originalMethod.MetadataToken;
             var key = (ownerId, token);

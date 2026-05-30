@@ -90,6 +90,11 @@ namespace LobbyKit.Features.Settings
                 "Auto-Restart Lobby On Crash",
                 draft => draft.AutoRestartOnCrash,
                 (draft, value) => draft.AutoRestartOnCrash = value),
+            new ToggleSettingsField(
+                "enable-anticheat",
+                "Enable AntiCheat (experimental)",
+                draft => draft.EnableAnticheat,
+                (draft, value) => draft.EnableAnticheat = value),
             new TextSettingsField(
                 "message-of-the-day",
                 "Message of the Day",
