@@ -46,6 +46,7 @@ namespace LobbyKit.Patches
         {
             LobbyKitCore.WasHosting = false;
             ChatSystem.ResetSessionState();
+            LobbyKitCore.Instance?.ResetLobbyTrackingState("LeaveGame");
         }
 
         [HarmonyPatch(typeof(UiReferenceController), "ReturnToMainMenu")]
@@ -56,6 +57,7 @@ namespace LobbyKit.Patches
                 return;
 
             LobbyKitCore.WasHosting = false;
+            LobbyKitCore.Instance?.ResetLobbyTrackingState("ReturnToMainMenu");
 
             if (!_hasLastLobbyParams)
             {

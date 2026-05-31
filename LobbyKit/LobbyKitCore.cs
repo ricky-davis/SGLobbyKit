@@ -119,9 +119,7 @@ namespace LobbyKit
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
         {
             ReferencesLoaded = false;
-            players.Clear();
-            _playerJoinTimes.Clear();
-            _playerJoinTimesByProductId.Clear();
+            ResetLobbyTrackingState("scene loaded");
             Patches.ChatSystem.ResetSessionState();
             MelonCoroutines.Start(LoadReferences());
         }
@@ -164,13 +162,26 @@ namespace LobbyKit
             if (p == null)
                 return;
 
+            double nowUptime = GetLobbyUptimeSeconds();
             bool isLocalPlayer = p.IsLocalPlayerInstance();
             bool isNewConnection = !players.Any(player => player != null && player.ConnectionID == p.ConnectionID);
             if (isNewConnection)
                 players.Add(p);
 
-            if (isNewConnection && (isHost || isLocalPlayer))
-                TrackPlayerJoinTime(p, GetLobbyUptimeSeconds());
+            if (isHost || isLocalPlayer)
+            {
+                // Guard against stale timestamps carried across lobby transitions where
+                // remove events were missed. Old values often exceed current uptime.
+                if (!string.IsNullOrWhiteSpace(p.ProductUserId) &&
+                    _playerJoinTimesByProductId.TryGetValue(p.ProductUserId, out double trackedJoinTime) &&
+                    trackedJoinTime > nowUptime + 1d)
+                {
+                    _playerJoinTimesByProductId[p.ProductUserId] = nowUptime;
+                }
+
+                if (isNewConnection)
+                    TrackPlayerJoinTime(p, nowUptime);
+            }
 
             if (isLocalPlayer)
             {
@@ -230,6 +241,7 @@ namespace LobbyKit
                 localPlayer = null;
                 isHost = false;
                 Patches.SilentCrashDetectionPatches.StopPolling();
+                ResetLobbyTrackingState("local player removed");
             }
         }
 
@@ -265,6 +277,11 @@ namespace LobbyKit
                 joinTimeSeconds = playerReference.ConnectionID == 32767 ? 0d : currentUptimeSeconds;
                 TrackPlayerJoinTime(playerReference, joinTimeSeconds);
             }
+            else if (joinTimeSeconds > currentUptimeSeconds + 1d)
+            {
+                joinTimeSeconds = playerReference.ConnectionID == 32767 ? 0d : currentUptimeSeconds;
+                TrackPlayerJoinTime(playerReference, joinTimeSeconds);
+            }
 
             sessionSeconds = currentUptimeSeconds - joinTimeSeconds;
             return true;
@@ -279,6 +296,11 @@ namespace LobbyKit
 
             double currentUptimeSeconds = GetLobbyUptimeSeconds();
             if (!_playerJoinTimesByProductId.TryGetValue(productUserId, out double joinTimeSeconds))
+            {
+                joinTimeSeconds = currentUptimeSeconds;
+                _playerJoinTimesByProductId[productUserId] = joinTimeSeconds;
+            }
+            else if (joinTimeSeconds > currentUptimeSeconds + 1d)
             {
                 joinTimeSeconds = currentUptimeSeconds;
                 _playerJoinTimesByProductId[productUserId] = joinTimeSeconds;
@@ -333,6 +355,15 @@ namespace LobbyKit
 
             if (!string.IsNullOrWhiteSpace(playerReference.ProductUserId))
                 _playerJoinTimesByProductId[playerReference.ProductUserId] = joinTimeSeconds;
+        }
+
+        public void ResetLobbyTrackingState(string reason = null)
+        {
+            players.Clear();
+            _playerJoinTimes.Clear();
+            _playerJoinTimesByProductId.Clear();
+            if (!string.IsNullOrWhiteSpace(reason))
+                Debug.Log($"[LobbyKit] Reset lobby tracking state ({reason}).");
         }
 
         public static string FormatLobbyJoinTime(double uptimeSeconds)
