@@ -190,6 +190,16 @@ namespace LobbyKit
 
             if (isHost)
                 Patches.ChatSystem.SendMotdToPlayer(p);
+                
+            try
+            {
+                string cID = InstanceFinder.TransportManager.Transport.GetConnectionAddress(p.ConnectionID);
+                Debug.Log($"Client {p.ConnectionID} connection ID: {cID}");
+            }
+            catch (Exception ex)
+            {
+                Debug.LogError($"Error occurred while fetching connection ID for client {p.ConnectionID}: {ex.Message}");
+            }
         }
 
         public void PlayerLeftGame(PlayerReference removedPlayer)
