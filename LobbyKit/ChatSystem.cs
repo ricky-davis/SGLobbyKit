@@ -71,16 +71,16 @@ namespace LobbyKit.Patches
                 "Shows the message of the day. Host can pass a message to set it."),
             ["!bc"] = new CommandDefinition(
                 HandleBangCommandsCommand,
-                "!bc <on|off>",
+                "!bc [on|off]",
                 "Enable or disable guest bang commands.",
                 hostCommand: true),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
-                "!tp <name>",
+                "!tp [name]",
                 "Teleport to a player by name."),
             ["!tpme"] = new CommandDefinition(
                 HandleTpMeCommand,
-                "!tpme <name>",
+                "!tpme [name]",
                 "Ask a player to Teleport to you."),
             ["!tpa"] = new CommandDefinition(
                 HandleTpAcceptCommand,
@@ -88,7 +88,7 @@ namespace LobbyKit.Patches
                 "Accept a Teleport request."),
             ["!tpf"] = new CommandDefinition(
                 HandleTpForceCommand,
-                "!tpf <name>",
+                "!tpf [name]",
                 "Force a player to Teleport to you.",
                 hostCommand: true)
         };
