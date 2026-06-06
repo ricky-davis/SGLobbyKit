@@ -19,6 +19,8 @@ namespace LobbyKit.Features.Anticheat
 
         private static readonly Dictionary<int, float> _sizes = new();
 
+        public static bool AnySizes => _sizes.Count > 0;
+
         public static float GetSize(int connectionId)
             => _sizes.TryGetValue(connectionId, out float s) ? s : DefaultSize;
 

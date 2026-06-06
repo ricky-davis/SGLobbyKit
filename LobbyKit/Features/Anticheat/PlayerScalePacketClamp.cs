@@ -282,20 +282,59 @@ namespace LobbyKit.Features.Anticheat
                 if (nob == null || nt == null) return;
                 var conn = nob.Owner;
 
-                byte[] packet = BuildPositionScalePacket(pc.transform.position, size);
-
                 // Everyone except the owner: relay the transform (the owner's reader skips this RPC for itself).
-                try { nt.RpcWriter___ObserversUpdateClientAuthoritativeTransform___2713644489(ToSeg(packet), Il2CppFishNet.Transporting.Channel.Reliable); }
-                catch (Exception ex) { MelonLogger.Warning($"[LobbyKit] !size observer relay failed: {ex.GetType().Name}: {ex.Message}"); }
+                PushSizeToObservers(pc, size);
 
                 // The owner: forge them non-owner so MoveToTarget applies it, deliver the goal, restore ownership.
                 if (conn != null && conn.IsValid)
+                {
+                    byte[] packet = BuildPositionScalePacket(pc.transform.position, size);
                     MelonCoroutines.Start(PushSizeToOwner(nob, nt, conn, packet));
+                }
             }
             catch (Exception ex)
             {
                 MelonLogger.Warning($"[LobbyKit] !size apply failed: {ex.GetType().Name}: {ex.Message}");
             }
+        }
+
+        // Relays a player's size to all CURRENT observers (the owner skips this RPC for itself). Late joiners
+        // spawn the player from the server's cached transform and never received the original ObserversUpdate,
+        // so RepushAllSizes() must be re-run when someone joins (see LobbyKitCore.PlayerJoinedGame).
+        public static void PushSizeToObservers(PlayerControl pc, float size)
+        {
+            try
+            {
+                if (pc == null) return;
+                var nt = pc.GetComponent<NetworkTransform>();
+                if (nt == null) return;
+                byte[] packet = BuildPositionScalePacket(pc.transform.position, size);
+                nt.RpcWriter___ObserversUpdateClientAuthoritativeTransform___2713644489(ToSeg(packet), Il2CppFishNet.Transporting.Channel.Reliable);
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[LobbyKit] !size observer relay failed: {ex.GetType().Name}: {ex.Message}");
+            }
+        }
+
+        // Re-broadcasts every non-default registered size to all observers. Called (delayed + retried) when a
+        // player joins, so late joiners pick up sizes that were applied before they arrived. Re-applying to
+        // players who already have the size is harmless. No-op when nobody has a custom size.
+        public static void RepushAllSizes()
+        {
+            try
+            {
+                if (!InstanceFinder.IsServerStarted || !PlayerSizeRegistry.AnySizes) return;
+                foreach (var pc in UnityEngine.Object.FindObjectsOfType<PlayerControl>())
+                {
+                    int owner;
+                    try { owner = pc.OwnerId; } catch { continue; }
+                    float size = PlayerSizeRegistry.GetSize(owner);
+                    if (Math.Abs(size - PlayerSizeRegistry.DefaultSize) <= Tolerance) continue;
+                    PushSizeToObservers(pc, size);
+                }
+            }
+            catch { }
         }
 
         private static IEnumerator PushSizeToOwner(Il2CppFishNet.Object.NetworkObject nob, NetworkTransform nt,

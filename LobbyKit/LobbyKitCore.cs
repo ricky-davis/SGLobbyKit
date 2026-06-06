@@ -311,6 +311,11 @@ namespace LobbyKit
                 }
                 string logName = Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
                 MelonLogger.Msg($"[LobbyKit] + {logName} joined (conn {p.ConnectionID}) — {RemotePlayerCount} online.");
+
+                // A late joiner spawns existing players from the server's cached transform and missed any earlier
+                // !size ObserversUpdate, so re-broadcast registered sizes across their load window.
+                if (Features.Anticheat.PlayerSizeRegistry.AnySizes)
+                    MelonCoroutines.Start(RepushSizesForJoin());
             }
 
             if (isHost)
@@ -726,6 +731,18 @@ namespace LobbyKit
 
             _autoRestartOnCrash.Value = value;
             MelonPreferences.Save();
+        }
+
+        // Re-broadcasts registered !size values a few times across a joiner's load window so they pick up sizes
+        // applied before they arrived (an ObserversUpdate only reaches clients already observing the player).
+        private static IEnumerator RepushSizesForJoin()
+        {
+            float[] increments = { 0.0f, 0.1f, 2f, 2f, 3f, 5f };   // re-push at ~2, 4, 7, 12s after join
+            foreach (float inc in increments)
+            {
+                yield return new WaitForSecondsRealtime(inc);
+                Features.Anticheat.PlayerScalePacketClamp.RepushAllSizes();
+            }
         }
 
         private IEnumerator LoadReferences()
