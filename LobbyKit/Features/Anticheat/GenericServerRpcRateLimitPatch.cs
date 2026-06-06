@@ -100,7 +100,7 @@ namespace LobbyKit.Features.Anticheat
             {
                 _lastCallTime[key] = now;
                 if (LogAllRpcCalls)
-                    MelonLogger.Msg($"[RPC] {name ?? __originalMethod.Name} | client={ownerId} | first call");
+                    VerboseLog.Msg($"[RPC] {name ?? __originalMethod.Name} | client={ownerId} | first call");
                 return true;
             }
 
@@ -114,7 +114,7 @@ namespace LobbyKit.Features.Anticheat
             if (LogAllRpcCalls)
             {
                 string tag = elapsed < limit ? " BLOCKED" : string.Empty;
-                MelonLogger.Msg($"[RPC] {name ?? __originalMethod.Name} | client={ownerId} | gap={elapsed * 1000f:F0}ms{tag}");
+                VerboseLog.Msg($"[RPC] {name ?? __originalMethod.Name} | client={ownerId} | gap={elapsed * 1000f:F0}ms{tag}");
             }
 
             if (elapsed < limit)

@@ -48,6 +48,8 @@ namespace LobbyKit
         private static MelonPreferences_Entry<int> _leaveMessageSize;
         private static MelonPreferences_Entry<bool> _autoRestartOnCrash;
         private static MelonPreferences_Entry<bool> _enableAnticheat;
+        private static MelonPreferences_Entry<bool> _enforcePlayerScale;
+        private static MelonPreferences_Entry<bool> _blockSledPush;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -72,6 +74,8 @@ namespace LobbyKit
         public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
         public static bool AutoRestartOnCrash => _autoRestartOnCrash?.Value ?? false;
         public static bool EnableAnticheat => _enableAnticheat?.Value ?? false;
+        public static bool EnforcePlayerScale => _enforcePlayerScale?.Value ?? true;
+        public static bool BlockSledPush => _blockSledPush?.Value ?? true;
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -110,10 +114,44 @@ namespace LobbyKit
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
             _enableAnticheat = _preferences.CreateEntry("EnableAnticheat", false, "Enable AntiCheat", "Rate-limit and kick clients who spam server RPCs.");
+            _enforcePlayerScale = _preferences.CreateEntry("EnforcePlayerScale", true, "Enforce Player Scale", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
+            _blockSledPush = _preferences.CreateEntry("BlockSledPush", true, "Block Sled Push", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever). Boosts use a separate path and are unaffected. Disable to allow manual sled pushing.");
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
             Features.Anticheat.GenericServerRpcRateLimitPatch.ApplyPatches(HarmonyInstance);
+            Features.Anticheat.PlayerScalePacketClamp.Apply(HarmonyInstance);
+            Features.Anticheat.SledPushBlockPatch.Apply(HarmonyInstance);
+
+            MelonCoroutines.Start(PlayerCountLogLoop());
+        }
+
+        // Runs after all gameplay Updates each frame; re-asserts player scale so a size cheat can't stick.
+        public override void OnLateUpdate()
+        {
+            if (EnforcePlayerScale)
+                Features.Anticheat.PlayerScaleEnforcer.Tick();
+        }
+
+        // Number of connected non-host players (excludes the host's own clientHost connection 32767).
+        private int RemotePlayerCount => players.Count(pl => pl != null && pl.ConnectionID != 32767);
+
+        // Periodically logs the connected player count (and names) while hosting, as a server heartbeat.
+        private IEnumerator PlayerCountLogLoop()
+        {
+            while (true)
+            {
+                yield return new WaitForSecondsRealtime(60f);
+                if (!isHost)
+                    continue;
+                int n = RemotePlayerCount;
+                string list = n > 0
+                    ? " [" + string.Join(", ", players
+                        .Where(pl => pl != null && pl.ConnectionID != 32767)
+                        .Select(pl => Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(pl.Username) ? "?" : pl.Username))) + "]"
+                    : "";
+                MelonLogger.Msg($"[LobbyKit] Players online: {n}{list}");
+            }
         }
 
         public override void OnSceneWasLoaded(int buildIndex, string sceneName)
@@ -157,6 +195,77 @@ namespace LobbyKit
                 Instance.PlayerLeftGame(removedItem);
             }
         }
+
+        // ───────────────────────── Dedicated / headless server support ─────────────────────────
+        // PlayerJoinPatch / PlayerLeavePatch above hook PlayerReferenceManager.OnPlayerReferenceAdded /
+        // OnPlayerReferenceRemoved. Those game methods only run when the SyncList
+        // sync_PlayerReferences.OnChange callback is subscribed — which the game does ONLY in
+        // PlayerReferenceManager.OnStartClient. An avatar-less headless host never wires that up, so on it
+        // those hooks never fire and MOTD / join / leave go silent. We drive the SAME PlayerJoinedGame /
+        // PlayerLeftGame off the server-authoritative Server_AddPlayerReference / Server_RemovePlayerReference
+        // instead.
+        //
+        // GATE = Application.isBatchMode. IMPORTANT: a headless host is NOT FishNet "server-only" — it is
+        // booted through the normal HOST path, so it is a clientHost: IsServerStarted AND IsClientStarted
+        // are BOTH true (verified live), hence IsServerOnlyStarted == false. It just has no local avatar.
+        // So IsServerOnlyStarted is the wrong discriminator here; the reliable "this is a dedicated/headless
+        // server" signal is Application.isBatchMode (the server is always launched -batchmode -nographics,
+        // and SledHeadless gates its whole headless mode on it). A normal graphical client-host has
+        // isBatchMode == false and keeps using the OnPlayerReferenceAdded path, so the two paths never
+        // collide — and LobbyKit's own isNewConnection / MotdRecipients / wasTrackedPlayer dedup makes any
+        // overlap idempotent regardless. We call PlayerJoinedGame / PlayerLeftGame directly rather than
+        // re-running the game's OnPlayerReferenceAdded, whose tail (WarmCommunicationPolicy, EOS host-only
+        // state) NREs on an avatar-less host.
+        [HarmonyPatch(typeof(PlayerReferenceManager), "Server_AddPlayerReference")]
+        public static class DedicatedServerJoinPatch
+        {
+            private static void Postfix(PlayerReferenceManager __instance, int connectionId)
+            {
+                if (Instance == null || !Application.isBatchMode)
+                    return;
+                if (connectionId == 32767)
+                    return; // the host's own dict-only registration, not a joining player
+
+                isHost = true; // a dedicated server IS the host; no local PlayerReference will set this
+                PlayerReference joined = FindByConnectionId(__instance, connectionId);
+                if (joined != null)
+                    Instance.PlayerJoinedGame(joined);
+            }
+        }
+
+        [HarmonyPatch(typeof(PlayerReferenceManager), "Server_RemovePlayerReference")]
+        public static class DedicatedServerLeavePatch
+        {
+            // Prefix: the original removes the reference from sync_PlayerReferences in its own body, so we
+            // must resolve it BEFORE the original runs.
+            private static void Prefix(PlayerReferenceManager __instance, int playerNetId)
+            {
+                if (Instance == null || !Application.isBatchMode)
+                    return;
+                if (playerNetId == 32767)
+                    return;
+
+                isHost = true;
+                PlayerReference leaving = FindByConnectionId(__instance, playerNetId);
+                if (leaving != null)
+                    Instance.PlayerLeftGame(leaving);
+            }
+        }
+
+        private static PlayerReference FindByConnectionId(PlayerReferenceManager prm, int connectionId)
+        {
+            var refs = prm.GetPlayerReferences();
+            if (refs == null)
+                return null;
+            for (int i = 0; i < refs.Count; i++)
+            {
+                var r = refs[i];
+                if (r != null && r.ConnectionID == connectionId)
+                    return r;
+            }
+            return null;
+        }
+
         public void PlayerJoinedGame(PlayerReference p)
         {
             if (p == null)
@@ -193,10 +302,15 @@ namespace LobbyKit
                     Patches.SilentCrashDetectionPatches.StartPolling();
                 }
             }
-            else if (isHost && isNewConnection && ShowJoinMessages)
+            else if (isHost && isNewConnection)
             {
-                string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
-                Patches.ChatSystem.BroadcastSystemMessage($"<size={JoinMessageSize}%><#FA0>{username} joined.");
+                if (ShowJoinMessages)
+                {
+                    string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
+                    Patches.ChatSystem.BroadcastSystemMessage($"<size={JoinMessageSize}%><#FA0>{username} joined.");
+                }
+                string logName = Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
+                MelonLogger.Msg($"[LobbyKit] + {logName} joined (conn {p.ConnectionID}) — {RemotePlayerCount} online.");
             }
 
             if (isHost)
@@ -223,10 +337,19 @@ namespace LobbyKit
             if (isHost && wasTrackedPlayer && !isLocalPlayer)
             {
                 string username = Patches.ChatSystem.AutoCloseTmpRichText(string.IsNullOrWhiteSpace(removedPlayer.Username) ? "A player" : removedPlayer.Username);
+                string logName = Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(removedPlayer.Username) ? "A player" : removedPlayer.Username);
+                int remaining = RemotePlayerCount - 1; // leaver still counted until RemoveAll below
                 if (Features.Anticheat.KickAnnouncer.TryConsume(removedPlayer.ConnectionID, out string kickReason))
+                {
                     Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#F44>{username} {kickReason}.");
-                else if (ShowLeaveMessages)
-                    Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#FA0>{username} left.");
+                    MelonLogger.Msg($"[LobbyKit] - {logName} {kickReason} (conn {removedPlayer.ConnectionID}) — {remaining} online.");
+                }
+                else
+                {
+                    if (ShowLeaveMessages)
+                        Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#FA0>{username} left.");
+                    MelonLogger.Msg($"[LobbyKit] - {logName} left (conn {removedPlayer.ConnectionID}) — {remaining} online.");
+                }
             }
 
             players.RemoveAll(player => player == null || player.ConnectionID == removedPlayer.ConnectionID);
@@ -235,6 +358,7 @@ namespace LobbyKit
                 _playerJoinTimesByProductId.Remove(removedPlayer.ProductUserId);
             Patches.ChatSystem.ForgetMotdRecipient(removedPlayer.ConnectionID);
             Patches.ChatSystem.ForgetTeleportRequests(removedPlayer.ConnectionID);
+            Features.Anticheat.PlayerSizeRegistry.Remove(removedPlayer.ConnectionID);
 
             if (localPlayer != null && localPlayer.ConnectionID == removedPlayer.ConnectionID)
             {

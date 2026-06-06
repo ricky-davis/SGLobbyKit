@@ -90,7 +90,11 @@ namespace LobbyKit.Patches
                 HandleTpForceCommand,
                 "!tpf [name]",
                 "Force a player to Teleport to you.",
-                hostCommand: true)
+                hostCommand: true),
+            ["!size"] = new CommandDefinition(
+                HandleSizeCommand,
+                "!size [0.2-3.0]",
+                "Set your player size. !size 1 resets to normal.")
         };
 
         private static void OpenSettingsMenu(PlayerControl playerControl, string args)
@@ -171,6 +175,7 @@ namespace LobbyKit.Patches
             if (clientId == 0)
             {
                 serverManager.Broadcast(CreatePublicChatMessage(text, username, showAboveUser), true);
+                MelonLogger.Msg($"[LobbyKit] chat | {StripRichText(username)}: {StripRichText(text)}");
                 return;
             }
 
@@ -205,6 +210,7 @@ namespace LobbyKit.Patches
             if (string.IsNullOrWhiteSpace(motd) || !MotdRecipients.Add(connectionId))
                 return;
 
+            MelonLogger.Msg($"[LobbyKit] MOTD -> {StripRichText(player.Username)} (conn {connectionId})");
             MelonCoroutines.Start(SendMotdWhenReady(connectionId));
         }
 
@@ -230,6 +236,7 @@ namespace LobbyKit.Patches
             TeleportRequests.Clear();
             LastCommandBySource.Clear();
             LastExplicitCommandBySource.Clear();
+            Features.Anticheat.PlayerSizeRegistry.Clear();
         }
 
         private static bool TryHandleCommand(string message, int connectionId, bool isHostLocal)
@@ -334,6 +341,14 @@ namespace LobbyKit.Patches
                 MessageType = ChatMessageType.Chat,
                 SystemMessageType = (SystemMessageType)(-1)
             };
+        }
+
+        // Strips all TMP/HTML-style rich-text tags (<color>, <size>, <#FA0>, etc.) for clean log output.
+        public static string StripRichText(string text)
+        {
+            if (string.IsNullOrEmpty(text))
+                return text;
+            return Regex.Replace(text, "<[^>]*>", string.Empty);
         }
 
         public static string AutoCloseTmpRichText(string text)
@@ -662,6 +677,31 @@ namespace LobbyKit.Patches
             TeleportPlayerTo(target.PlayerControl, playerControl);
             Reply(playerControl, $"<#FF0>Forced {targetUsername} to TP to you.");
             BroadcastMessage(target.ConnectionID, $"<#FF0>The host TP'd you to them.");
+        }
+
+        private static void HandleSizeCommand(PlayerControl playerControl, string args)
+        {
+            if (string.IsNullOrWhiteSpace(args))
+            {
+                float current = Features.Anticheat.PlayerSizeRegistry.GetSize(playerControl.OwnerId);
+                Reply(playerControl, $"<#7FF>Your size is {current:0.##}. Usage: !size <{Features.Anticheat.PlayerSizeRegistry.MinSize:0.##}-{Features.Anticheat.PlayerSizeRegistry.MaxSize:0.##}>");
+                return;
+            }
+
+            if (!float.TryParse(args.Trim(), System.Globalization.NumberStyles.Float, System.Globalization.CultureInfo.InvariantCulture, out float size))
+            {
+                Reply(playerControl, "<#F00>Usage: !size <number>");
+                return;
+            }
+
+            if (!Features.Anticheat.PlayerSizeRegistry.TrySetSize(playerControl.OwnerId, size))
+            {
+                Reply(playerControl, $"<#FA0>Size must be between {Features.Anticheat.PlayerSizeRegistry.MinSize:0.##} and {Features.Anticheat.PlayerSizeRegistry.MaxSize:0.##}.");
+                return;
+            }
+
+            Features.Anticheat.PlayerScalePacketClamp.ApplySize(playerControl, size);
+            Reply(playerControl, $"<#FF0>Size set to {size:0.##}.");
         }
 
         private static void TeleportPlayerTo(PlayerControl player, PlayerControl destination)

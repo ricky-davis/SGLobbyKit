@@ -21,7 +21,7 @@ namespace LobbyKit.Patches
         [HarmonyPostfix]
         private static void ServerManager_Transport_OnServerConnectionState_Postfix(ServerConnectionStateArgs args)
         {
-            MelonLogger.Msg($"[CrashDetect] Route1 — ServerConnectionState: {args.ConnectionState} | WasHosting={LobbyKitCore.WasHosting} | isHost={LobbyKitCore.isHost}");
+            VerboseLog.Msg($"[CrashDetect] Route1 — ServerConnectionState: {args.ConnectionState} | WasHosting={LobbyKitCore.WasHosting} | isHost={LobbyKitCore.isHost}");
 
             if (args.ConnectionState == LocalConnectionState.Stopped && LobbyKitCore.WasHosting)
                 MelonLogger.Warning("[CrashDetect] Route1 — Server stopped while WasHosting=true: possible silent crash.");
@@ -39,7 +39,7 @@ namespace LobbyKit.Patches
         [HarmonyPostfix]
         private static void ServerManager_Transport_OnRemoteConnectionState_Postfix(RemoteConnectionStateArgs args)
         {
-            MelonLogger.Msg($"[CrashDetect] Route2 — RemoteConnectionState: clientId={args.ConnectionId} state={args.ConnectionState} | WasHosting={LobbyKitCore.WasHosting}");
+            VerboseLog.Msg($"[CrashDetect] Route2 — RemoteConnectionState: clientId={args.ConnectionId} state={args.ConnectionState} | WasHosting={LobbyKitCore.WasHosting}");
 
             if (args.ConnectionState != RemoteConnectionState.Stopped || !LobbyKitCore.WasHosting)
                 return;
@@ -54,7 +54,7 @@ namespace LobbyKit.Patches
                     burstCount++;
             }
 
-            MelonLogger.Msg($"[CrashDetect] Route2 — Remote client {args.ConnectionId} disconnected. {burstCount} disconnect(s) in last {DisconnectBurstWindow}s.");
+            VerboseLog.Msg($"[CrashDetect] Route2 — Remote client {args.ConnectionId} disconnected. {burstCount} disconnect(s) in last {DisconnectBurstWindow}s.");
 
             if (burstCount >= DisconnectBurstThreshold)
                 MelonLogger.Warning($"[CrashDetect] Route2 — {burstCount} clients disconnected within {DisconnectBurstWindow}s: possible silent crash.");
@@ -81,7 +81,7 @@ namespace LobbyKit.Patches
 
         private static IEnumerator PollHostStateCoroutine()
         {
-            MelonLogger.Msg("[CrashDetect] Polling coroutine started.");
+            VerboseLog.Msg("[CrashDetect] Polling coroutine started.");
 
             while (_pollingActive)
             {
@@ -109,7 +109,7 @@ namespace LobbyKit.Patches
                     lobbyId = "<error>";
                 }
 
-                MelonLogger.Msg($"[CrashDetect] Route3/4 poll — serverRunning={serverRunning} | eosLobbyActive={eosLobbyActive} | lobbyId={lobbyId} | WasHosting={LobbyKitCore.WasHosting}");
+                VerboseLog.Msg($"[CrashDetect] Route3/4 poll — serverRunning={serverRunning} | eosLobbyActive={eosLobbyActive} | lobbyId={lobbyId} | WasHosting={LobbyKitCore.WasHosting}");
 
                 if (!serverRunning)
                     MelonLogger.Warning("[CrashDetect] Route3 — IsAnyServerStarted()=false while WasHosting=true: possible silent crash.");
@@ -118,7 +118,7 @@ namespace LobbyKit.Patches
                     MelonLogger.Warning("[CrashDetect] Route4 — EOS lobby active but FishNet server stopped: mismatch detected.");
             }
 
-            MelonLogger.Msg("[CrashDetect] Polling coroutine stopped.");
+            VerboseLog.Msg("[CrashDetect] Polling coroutine stopped.");
         }
     }
 }

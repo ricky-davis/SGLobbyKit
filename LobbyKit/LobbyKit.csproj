@@ -658,6 +658,11 @@
     <Compile Include="Features/PlayerList/PlayerListPatches.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
+    <Compile Include="VerboseLog.cs" />
+    <Compile Include="Features/Anticheat/PlayerScaleEnforcer.cs" />
+    <Compile Include="Features/Anticheat/PlayerScalePacketClamp.cs" />
+    <Compile Include="Features/Anticheat/PlayerSizeRegistry.cs" />
+    <Compile Include="Features/Anticheat/SledPushBlockPatch.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	
