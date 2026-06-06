@@ -23,6 +23,7 @@ namespace LobbyKit
         public static bool WasHosting = false;
 
         private static MelonPreferences_Category _preferences;
+        private static MelonPreferences_Category _serverSettings;   // shared with SledHeadless
         private static MelonPreferences_Entry<bool> _enableGuestBangCommands;
         private static MelonPreferences_Entry<string> _serverName;
         private static MelonPreferences_Entry<int> _serverCapacity;
@@ -91,13 +92,27 @@ namespace LobbyKit
 
             _preferences = MelonPreferences.CreateCategory("LobbyKit", "LobbyKit");
             _enableGuestBangCommands = _preferences.CreateEntry("EnableGuestBangCommands", true, "Enable Guest Bang Commands", "Allow non-host players to use custom bang chat commands like !tp.");
-            _serverName = _preferences.CreateEntry("ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
-            _serverCapacity = _preferences.CreateEntry("ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
-            _isPublicLobby = _preferences.CreateEntry("IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
-            _isPasswordProtected = _preferences.CreateEntry("IsPasswordProtected", false, "Password Protected", "Saved default for password protection.");
-            _lobbyPassword = _preferences.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
-            _isPeacefulMode = _preferences.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
-            _isTextChatOnly = _preferences.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+
+            // Server config lives in its own shared category so LobbyKit and SledHeadless read one source of truth.
+            _serverSettings = MelonPreferences.CreateCategory("ServerSettings", "Server Settings");
+            _serverName = _serverSettings.CreateEntry("ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
+            _serverCapacity = _serverSettings.CreateEntry("ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
+            _isPublicLobby = _serverSettings.CreateEntry("IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
+            _isPasswordProtected = _serverSettings.CreateEntry("IsPasswordProtected", false, "Password Protected", "Saved default for password protection.");
+            _lobbyPassword = _serverSettings.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
+            _isPeacefulMode = _serverSettings.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
+            _isTextChatOnly = _serverSettings.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+
+            // One-time migration: pull any non-default value users saved under the old "LobbyKit" category into
+            // ServerSettings, then drop the stale key. No-ops once migrated (ServerSettings already non-default).
+            MigrateServerSetting(_preferences, "ServerName", _serverName, string.Empty);
+            MigrateServerSetting(_preferences, "ServerCapacity", _serverCapacity, 8);
+            MigrateServerSetting(_preferences, "IsPublicLobby", _isPublicLobby, true);
+            MigrateServerSetting(_preferences, "IsPasswordProtected", _isPasswordProtected, false);
+            MigrateServerSetting(_preferences, "LobbyPassword", _lobbyPassword, string.Empty);
+            MigrateServerSetting(_preferences, "IsPeacefulMode", _isPeacefulMode, false);
+            MigrateServerSetting(_preferences, "IsTextChatOnly", _isTextChatOnly, false);
+
             // Disabled for now. Leave the field/property/setter in place so this can be re-enabled without rewiring callers.
             // _searchMinPlayers = _preferences.CreateEntry("SearchMinPlayers", 1, "Search Min Players", "Minimum players filter for lobby search.");
             _searchMaxPlayers = _preferences.CreateEntry("SearchMaxPlayers", 0, "Search Max Players", "Maximum players filter for lobby search. 0 == Any.");
@@ -124,6 +139,30 @@ namespace LobbyKit
             Features.Anticheat.SledPushBlockPatch.Apply(HarmonyInstance);
 
             MelonCoroutines.Start(PlayerCountLogLoop());
+        }
+
+        // Copies a value users previously saved under an old category into its new ServerSettings entry, then
+        // removes the stale key. Only overwrites when the ServerSettings entry is still at its default, so an
+        // already-migrated or explicitly-set value is never clobbered (and it no-ops on subsequent launches).
+        private static void MigrateServerSetting<T>(MelonPreferences_Category oldCategory, string key, MelonPreferences_Entry<T> target, T defaultValue)
+        {
+            try
+            {
+                if (oldCategory == null || target == null)
+                    return;
+
+                MelonPreferences_Entry<T> old = oldCategory.CreateEntry<T>(key, defaultValue);   // binds to the saved value if one exists
+                bool oldIsDefault = EqualityComparer<T>.Default.Equals(old.Value, defaultValue);
+                bool targetIsDefault = EqualityComparer<T>.Default.Equals(target.Value, defaultValue);
+                if (targetIsDefault && !oldIsDefault)
+                    target.Value = old.Value;
+
+                oldCategory.DeleteEntry(key);   // drop the stale key from the old category
+            }
+            catch (Exception ex)
+            {
+                MelonLogger.Warning($"[LobbyKit] ServerSettings migrate '{key}' failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         // Runs after all gameplay Updates each frame; re-asserts player scale so a size cheat can't stick.

@@ -11,12 +11,6 @@ namespace LobbyKit.Patches
     [HarmonyPatch]
     internal static class AutoRestartPatches
     {
-        private static bool _lastProximityChatEnabled = false;
-        private static string _lastPlatform = string.Empty;
-        private static string _lastRegion = string.Empty;
-        private static bool _lastCrossplayEnabled = true;
-        private static bool _hasLastLobbyParams = false;
-
         private static int _pendingAutoRestartAttempts = 0;
         private const int MaxAutoRestartAttempts = 3;
         private const int AutoRestartRetryDelayFrames = 300; // 5 seconds
@@ -24,21 +18,6 @@ namespace LobbyKit.Patches
         private static bool _awaitingLobbyLeft = false;
         private static bool _createCompleteFired = false;
         private static bool _pendingFishNetStop = false;
-
-        [HarmonyPatch(typeof(LobbyManager), "CreateLobby")]
-        [HarmonyPrefix]
-        private static void LobbyManager_CreateLobby_Prefix(
-            ref bool proximityChatEnabled,
-            ref string platform,
-            ref string region,
-            ref bool crossplayEnabled)
-        {
-            _lastProximityChatEnabled = proximityChatEnabled;
-            _lastPlatform = platform ?? string.Empty;
-            _lastRegion = region ?? string.Empty;
-            _lastCrossplayEnabled = crossplayEnabled;
-            _hasLastLobbyParams = true;
-        }
 
         [HarmonyPatch(typeof(UiReferenceController), "LeaveGame")]
         [HarmonyPrefix]
@@ -58,12 +37,6 @@ namespace LobbyKit.Patches
 
             LobbyKitCore.WasHosting = false;
             LobbyKitCore.Instance?.ResetLobbyTrackingState("ReturnToMainMenu");
-
-            if (!_hasLastLobbyParams)
-            {
-                MelonLogger.Warning("[LobbyKit] Auto-restart: no prior lobby params recorded, skipping restart.");
-                return;
-            }
 
             _pendingAutoRestartAttempts = MaxAutoRestartAttempts;
             MelonCoroutines.Start(AutoRestartLobbyCoroutine());
@@ -217,18 +190,23 @@ namespace LobbyKit.Patches
                 ? LobbyKitCore.ServerName
                 : $"{GameInfo.Instance?.PlayerName ?? "Host"}'s Lobby";
 
+            // Platform/region aren't LobbyKit settings, so derive them the way the game/Headless do; a
+            // re-hosting client already has its region resolved. Crossplay is non-functional in this game.
+            string region = RegionHandler.DefaultRegion;
+            try { region = PlayerPrefsManager.Instance?.playerSavedSettings?.PlayerRegion ?? region; } catch { }
+
             MelonLogger.Msg("[LobbyKit] Auto-restart: creating lobby...");
             lobbyManager.CreateLobby(
                 lobbyName,
                 LobbyKitCore.ServerCapacity,
                 LobbyKitCore.IsPublicLobby,
-                _lastProximityChatEnabled,
+                !LobbyKitCore.IsTextChatOnly,   // proximityChatEnabled; text-chat-only == proximity voice off
                 LobbyKitCore.IsPasswordProtected,
                 LobbyKitCore.LobbyPassword,
                 LobbyKitCore.IsPeacefulMode,
-                _lastPlatform,
-                _lastRegion,
-                _lastCrossplayEnabled);
+                "PC",
+                region,
+                false);   // crossplay is non-functional in this game
         }
     }
 }
