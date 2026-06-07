@@ -5,18 +5,22 @@ using HarmonyLib;
 using Il2Cpp;
 using Il2CppFishNet;
 using Il2CppFishNet.Connection;
+using Il2CppFishNet.Managing.Server;
 using Il2CppDissonance.Integrations.FishNet;
 using Il2Cpp_Scripts.Player;
 using Il2Cpp_Scripts.Systems.Chat;
 using MelonLoader;
 using LobbyKit.Features.Settings;
+using LobbyKit.Features.Permissions;
 using UnityEngine;
 using System.Text.RegularExpressions;
 
 namespace LobbyKit.Patches
 {
+    // Command handlers live in partial-class files under Features/Commands/ (ChatSystem.*.cs); the framework
+    // (chat patches, dispatch, permissions, broadcast, confirmation, help) stays here.
     [HarmonyPatch]
-    public static class ChatSystem
+    public static partial class ChatSystem
     {
         private const int HostConnectionId = 32767;
         private const int PrivateReplySystemMessageType = 0;
@@ -31,20 +35,20 @@ namespace LobbyKit.Patches
                 ChatCommandHandler handler,
                 string usage,
                 string description,
-                bool hostCommand = false,
+                PermLevel minLevel = PermLevel.Everyone,
                 bool hiddenFromHelp = false)
             {
                 Handler = handler;
                 Usage = usage;
                 Description = description;
-                HostCommand = hostCommand;
+                MinLevel = minLevel;
                 HiddenFromHelp = hiddenFromHelp;
             }
 
             public ChatCommandHandler Handler { get; }
             public string Usage { get; }
             public string Description { get; }
-            public bool HostCommand { get; }
+            public PermLevel MinLevel { get; }   // minimum level to invoke the command at all
             public bool HiddenFromHelp { get; }
         }
 
@@ -64,16 +68,16 @@ namespace LobbyKit.Patches
                 OpenSettingsMenu,
                 "!settings",
                 "Open LobbyKit settings.",
-                hostCommand: true),
+                minLevel: PermLevel.Admin),
             [MotdCommand] = new CommandDefinition(
                 HandleMotdCommand,
                 "!motd [message]",
-                "Shows the message of the day. Host can pass a message to set it."),
+                "Show the message of the day. Admins can pass text to set it."),
             ["!bc"] = new CommandDefinition(
                 HandleBangCommandsCommand,
                 "!bc [on|off]",
                 "Enable or disable guest bang commands.",
-                hostCommand: true),
+                minLevel: PermLevel.Admin),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
                 "!tp [name]",
@@ -85,17 +89,59 @@ namespace LobbyKit.Patches
             ["!tpa"] = new CommandDefinition(
                 HandleTpAcceptCommand,
                 "!tpa",
-                "Accept a Teleport request."),
+                "Accept a Teleport request.",
+                hiddenFromHelp: true),
             ["!tpf"] = new CommandDefinition(
                 HandleTpForceCommand,
                 "!tpf [name]",
                 "Force a player to Teleport to you.",
-                hostCommand: true),
+                minLevel: PermLevel.Mod),
             ["!size"] = new CommandDefinition(
                 HandleSizeCommand,
                 "!size [0.2-3.0]",
-                "Set your player size. !size 1 resets to normal.")
+                "Set your player size. !size 1 resets to normal."),
+            ["!kick"] = new CommandDefinition(
+                HandleKickCommand,
+                "!kick [name] [reason]",
+                "Kick a player.",
+                minLevel: PermLevel.Mod),
+            ["!ban"] = new CommandDefinition(
+                HandleBanCommand,
+                "!ban [name|puid] [reason]",
+                "Ban a player (use !unban to reverse).",
+                minLevel: PermLevel.Admin),
+            ["!unban"] = new CommandDefinition(
+                HandleUnbanCommand,
+                "!unban [name|puid]",
+                "Remove a ban by player name or PUID.",
+                minLevel: PermLevel.Admin),
+            ["!op"] = new CommandDefinition(
+                HandleOpCommand,
+                "!op [level] [name]",
+                "Set a player's level (everyone/mod/admin/owner). Requires confirmation.",
+                minLevel: PermLevel.Owner),
+            ["!level"] = new CommandDefinition(
+                HandleLevelCommand,
+                "!level [name]",
+                "Show your level, or another player's.",
+                minLevel: PermLevel.Mod),
+            ["!confirm"] = new CommandDefinition(
+                HandleConfirmCommand,
+                "!confirm",
+                "Confirm a pending action (kick, ban, op, etc.).",
+                hiddenFromHelp: true)
         };
+
+        // Seeds the op-file with each command's default required level (without overwriting existing entries),
+        // so the JSON lists every command and the operator can edit its level. Set a level above Owner to
+        // disable a command. Called once at startup after Perms is loaded.
+        internal static void SeedCommandLevels()
+        {
+            var defaults = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
+            foreach (var entry in Commands)
+                defaults[entry.Key] = (int)entry.Value.MinLevel;
+            Perms.SeedCommandLevels(defaults);
+        }
 
         private static void OpenSettingsMenu(PlayerControl playerControl, string args)
         {
@@ -124,7 +170,7 @@ namespace LobbyKit.Patches
 
             bool handledCommand = TryHandleCommand(message, localPlayer.ConnectionID, isHostLocal: true);
             if (!handledCommand)
-                BroadcastMessage(0, message, AutoCloseTmpRichText(localPlayer.Username), showAboveUser: localPlayer.ConnectionID);
+                BroadcastMessage(0, message, AutoCloseTmpRichText(ApplyLevelPrefix(localPlayer.ConnectionID, localPlayer.Username)), showAboveUser: localPlayer.ConnectionID);
 
             chatBox.inputFieldValue = string.Empty;
             chatBox.ClearInputBox();
@@ -236,6 +282,7 @@ namespace LobbyKit.Patches
             TeleportRequests.Clear();
             LastCommandBySource.Clear();
             LastExplicitCommandBySource.Clear();
+            PendingConfirmations.Clear();
             Features.Anticheat.PlayerSizeRegistry.Clear();
         }
 
@@ -258,22 +305,30 @@ namespace LobbyKit.Patches
             if (parts.Length == 0 || !Commands.TryGetValue(parts[0], out CommandDefinition command))
                 return false;
 
-            bool isHost = connectionId == HostConnectionId;
+            string commandName = parts[0];
             string args = parts.Length > 1 ? parts[1].Trim() : string.Empty;
-            bool isMotdCommand = parts[0].Equals(MotdCommand, StringComparison.OrdinalIgnoreCase);
+            bool isMotdCommand = commandName.Equals(MotdCommand, StringComparison.OrdinalIgnoreCase);
+            PermLevel level = Perms.GetLevel(connectionId);
 
-            if (isMotdCommand && !HasMotd() && (string.IsNullOrWhiteSpace(args) || !isHost))
+            // Silently hide an unset MOTD from non-admins so !motd isn't noise on a server without one.
+            if (isMotdCommand && !HasMotd() && (string.IsNullOrWhiteSpace(args) || level < PermLevel.Admin))
                 return true;
 
-            if (!LobbyKitCore.EnableGuestBangCommands && !isHost)
+            // Required level: the op-file's per-command override, or the command's built-in default.
+            // A configured level above Owner (3) disables the command for everyone.
+            int requiredLevel = Perms.GetCommandLevel(commandName, (int)command.MinLevel);
+            if ((int)level < requiredLevel)
             {
-                BroadcastMessage(connectionId, "<#FA0>Commands are disabled on this server.");
+                BroadcastMessage(connectionId, requiredLevel > (int)PermLevel.Owner
+                    ? "<#FA0>That command is disabled."
+                    : "<#F00>You don't have permission for that command.");
                 return true;
             }
 
-            if (command.HostCommand && !isHost)
+            // !bc gates GUEST (Everyone-level) command use only; mods/admins/owners bypass it entirely.
+            if (level == PermLevel.Everyone && !LobbyKitCore.EnableGuestBangCommands)
             {
-                BroadcastMessage(connectionId, "<#F00>Only the host can use that command.");
+                BroadcastMessage(connectionId, "<#FA0>Commands are disabled on this server.");
                 return true;
             }
 
@@ -395,7 +450,14 @@ namespace LobbyKit.Patches
                 ? player.Username
                 : fallbackUsername;
 
-            BroadcastMessage(0, text, AutoCloseTmpRichText(username), showAboveUser: connectionId);
+            BroadcastMessage(0, text, AutoCloseTmpRichText(ApplyLevelPrefix(connectionId, username)), showAboveUser: connectionId);
+        }
+
+        // Prepends the sender's configurable level chat-prefix (empty string disables it for that level).
+        private static string ApplyLevelPrefix(int connectionId, string username)
+        {
+            string prefix = LobbyKitCore.ChatPrefixFor(Perms.GetLevel(connectionId));
+            return string.IsNullOrEmpty(prefix) ? username : prefix + username;
         }
 
         private static ChatMessage CreateSystemChatMessage(string text)
@@ -486,7 +548,7 @@ namespace LobbyKit.Patches
                     requested = "!" + requested;
 
                 if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(requested, command, playerControl))
-                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(command)} - {command.Description}");
+                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(requested, command)} - {command.Description}");
                 else
                     Reply(playerControl, $"{helpSizing}<#FA0>Unknown command: {requested}");
 
@@ -497,7 +559,7 @@ namespace LobbyKit.Patches
             foreach (var entry in Commands)
             {
                 if (CanShowInHelp(entry.Key, entry.Value, playerControl))
-                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(entry.Value)}");
+                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(entry.Key, entry.Value)}");
             }
         }
 
@@ -505,7 +567,7 @@ namespace LobbyKit.Patches
         {
             return !command.HiddenFromHelp &&
                    (!commandName.Equals(MotdCommand, StringComparison.OrdinalIgnoreCase) || HasMotd()) &&
-                   CanUseCommand(command, playerControl);
+                   CanUseCommand(commandName, command, playerControl);
         }
 
         private static bool HasMotd()
@@ -513,15 +575,23 @@ namespace LobbyKit.Patches
             return !string.IsNullOrWhiteSpace(LobbyKitCore.MessageOfTheDay);
         }
 
-        private static bool CanUseCommand(CommandDefinition command, PlayerControl playerControl)
+        private static bool CanUseCommand(string commandName, CommandDefinition command, PlayerControl playerControl)
         {
-            return !command.HostCommand || playerControl.OwnerId == HostConnectionId;
+            if (playerControl == null) return false;
+            int required = Perms.GetCommandLevel(commandName, (int)command.MinLevel);
+            return (int)Perms.GetLevel(playerControl.OwnerId) >= required;
         }
 
-        private static string FormatCommandUsage(CommandDefinition command)
+        private static string FormatCommandUsage(string commandName, CommandDefinition command)
         {
-            return command.HostCommand ? $"{command.Usage} (host)" : command.Usage;
+            int required = Perms.GetCommandLevel(commandName, (int)command.MinLevel);
+            return required > (int)PermLevel.Everyone
+                ? $"{command.Usage} ({LevelLabel(required)})"
+                : command.Usage;
         }
+
+        private static string LevelLabel(int level)
+            => level > (int)PermLevel.Owner ? "Disabled" : ((PermLevel)level).DisplayName();
 
         private static void HandleBangCommandsCommand(PlayerControl playerControl, string args)
         {
@@ -552,9 +622,15 @@ namespace LobbyKit.Patches
 
         private static void HandleMotdCommand(PlayerControl playerControl, string args)
         {
-            if (string.IsNullOrWhiteSpace(args) || playerControl.OwnerId != HostConnectionId)
+            if (string.IsNullOrWhiteSpace(args))   // read — anyone
             {
                 Reply(playerControl, $"<#7FF>MOTD: </color>{LobbyKitCore.MessageOfTheDay}");
+                return;
+            }
+
+            if (!Perms.Has(playerControl, PermLevel.Admin))   // write — admin only
+            {
+                Reply(playerControl, "<#F00>Only admins can set the MOTD.");
                 return;
             }
 
@@ -562,122 +638,6 @@ namespace LobbyKit.Patches
             Reply(playerControl, $"<#FF0>MOTD set: </color>{LobbyKitCore.MessageOfTheDay}");
         }
 
-        private static void HandleTpCommand(PlayerControl playerControl, string args)
-        {
-            if (string.IsNullOrWhiteSpace(args))
-            {
-                Reply(playerControl, "<#F00>Usage: !tp <name>");
-                return;
-            }
-
-            string targetName = args.Trim();
-            PlayerReference target = Utils.FindPlayerByName(targetName, sanitized: true);
-            if (target == null)
-            {
-                Reply(playerControl, $"<#FA0>Player not found: {targetName}");
-                return;
-            }
-
-            string targetUsername = AutoCloseTmpRichText(target.Username);
-            if (target.PlayerControl == null)
-            {
-                return;
-            }
-
-            TeleportPlayerTo(playerControl, target.PlayerControl);
-            Reply(playerControl, $"<#FF0>TP'd to {targetUsername}");
-        }
-
-        private static void HandleTpMeCommand(PlayerControl playerControl, string args)
-        {
-            if (string.IsNullOrWhiteSpace(args))
-            {
-                Reply(playerControl, "<#F00>Usage: !tpme <name>");
-                return;
-            }
-
-            PlayerReference requester = Utils.FindPlayerFromConnectionId(playerControl.OwnerId);
-            if (requester == null)
-            {
-                Reply(playerControl, "<#F00>Command failed: player is not ready.");
-                return;
-            }
-
-            PlayerReference target = Utils.FindPlayerByName(args.Trim(), sanitized: true);
-            if (target == null)
-            {
-                Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}");
-                return;
-            }
-
-            if (target.ConnectionID == requester.ConnectionID)
-            {
-                Reply(playerControl, "<#FA0>You cannot request yourself.");
-                return;
-            }
-
-            string requesterUsername = AutoCloseTmpRichText(requester.Username);
-            string targetUsername = AutoCloseTmpRichText(target.Username);
-            TeleportRequests[target.ConnectionID] = requester.ConnectionID;
-            BroadcastMessage(target.ConnectionID, $"<#7FF>{requesterUsername} wants you to TP to them. Type !tpa to accept.");
-            Reply(playerControl, $"<#FF0>TP request sent to {targetUsername}.");
-        }
-
-        private static void HandleTpAcceptCommand(PlayerControl playerControl, string args)
-        {
-            int targetConnectionId = playerControl.OwnerId;
-            if (!TeleportRequests.TryGetValue(targetConnectionId, out int requesterConnectionId))
-            {
-                Reply(playerControl, "<#FA0>You have no pending TP request.");
-                return;
-            }
-
-            TeleportRequests.Remove(targetConnectionId);
-
-            PlayerReference requester = Utils.FindPlayerFromConnectionId(requesterConnectionId);
-            if (requester?.PlayerControl == null)
-            {
-                return;
-            }
-
-            string requesterUsername = AutoCloseTmpRichText(requester.Username);
-            TeleportPlayerTo(playerControl, requester.PlayerControl);
-            Reply(playerControl, $"<#FF0>TP'd to {requesterUsername}.");
-            string accepterName = AutoCloseTmpRichText(Utils.FindPlayerFromConnectionId(targetConnectionId)?.Username ?? "A player");
-            BroadcastMessage(requester.ConnectionID, $"<#FF0>{accepterName} accepted your TP request.");
-        }
-
-        private static void HandleTpForceCommand(PlayerControl playerControl, string args)
-        {
-            if (string.IsNullOrWhiteSpace(args))
-            {
-                Reply(playerControl, "<#F00>Usage: !tpf <name>");
-                return;
-            }
-
-            PlayerReference target = Utils.FindPlayerByName(args.Trim(), sanitized: true);
-            if (target == null)
-            {
-                Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}");
-                return;
-            }
-
-            string targetUsername = AutoCloseTmpRichText(target.Username);
-            if (target.PlayerControl == null)
-            {
-                return;
-            }
-
-            if (target.ConnectionID == playerControl.OwnerId)
-            {
-                Reply(playerControl, "<#FA0>You cannot force TP yourself.");
-                return;
-            }
-
-            TeleportPlayerTo(target.PlayerControl, playerControl);
-            Reply(playerControl, $"<#FF0>Forced {targetUsername} to TP to you.");
-            BroadcastMessage(target.ConnectionID, $"<#FF0>The host TP'd you to them.");
-        }
 
         private static void HandleSizeCommand(PlayerControl playerControl, string args)
         {
@@ -703,6 +663,28 @@ namespace LobbyKit.Patches
             Features.Anticheat.PlayerScalePacketClamp.ApplySize(playerControl, size);
             Reply(playerControl, $"<#FF0>Size set to {size:0.##}.");
         }
+
+        // ── Moderation & permissions ─────────────────────────────────────────────────
+        // One pending confirmation per requester (by connection id). Destructive commands stage an action and
+        // the requester runs !confirm to execute it.
+        private static readonly Dictionary<int, (Action Action, string Description)> PendingConfirmations = new();
+
+        internal static void RequestConfirmation(PlayerControl playerControl, string description, Action action)
+        {
+            PendingConfirmations[playerControl.OwnerId] = (action, description);
+            Reply(playerControl, $"<#FA0>{description}? Type <#FFF>!confirm</color> to proceed (or ignore to cancel).");
+        }
+
+
+        private static (string First, string Remainder) SplitFirstWord(string args)
+        {
+            if (string.IsNullOrWhiteSpace(args)) return (string.Empty, string.Empty);
+            string[] p = args.Trim().Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
+            return (p[0], p.Length > 1 ? p[1].Trim() : string.Empty);
+        }
+
+        private static bool LooksLikePuid(string value)
+            => !string.IsNullOrWhiteSpace(value) && value.Length >= 16 && value.IndexOf(' ') < 0;
 
         private static void TeleportPlayerTo(PlayerControl player, PlayerControl destination)
         {

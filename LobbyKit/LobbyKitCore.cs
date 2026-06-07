@@ -51,6 +51,9 @@ namespace LobbyKit
         private static MelonPreferences_Entry<bool> _enableAnticheat;
         private static MelonPreferences_Entry<bool> _enforcePlayerScale;
         private static MelonPreferences_Entry<bool> _blockSledPush;
+        private static MelonPreferences_Entry<string> _prefixMod;
+        private static MelonPreferences_Entry<string> _prefixAdmin;
+        private static MelonPreferences_Entry<string> _prefixOwner;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -78,6 +81,15 @@ namespace LobbyKit
         public static bool EnforcePlayerScale => _enforcePlayerScale?.Value ?? true;
         public static bool BlockSledPush => _blockSledPush?.Value ?? true;
 
+        // Chat prefix shown before a player's name, by permission level. Empty string disables that level's prefix.
+        public static string ChatPrefixFor(Features.Permissions.PermLevel level) => level switch
+        {
+            Features.Permissions.PermLevel.Owner => _prefixOwner?.Value ?? string.Empty,
+            Features.Permissions.PermLevel.Admin => _prefixAdmin?.Value ?? string.Empty,
+            Features.Permissions.PermLevel.Mod => _prefixMod?.Value ?? string.Empty,
+            _ => string.Empty
+        };
+
         private PlayerReferenceManager _playerReferenceManager;
 
         public bool ReferencesLoaded = false;
@@ -94,14 +106,16 @@ namespace LobbyKit
             _enableGuestBangCommands = _preferences.CreateEntry("EnableGuestBangCommands", true, "Enable Guest Bang Commands", "Allow non-host players to use custom bang chat commands like !tp.");
 
             // Server config lives in its own shared category so LobbyKit and SledHeadless read one source of truth.
+            // GetOrCreate (not CreateEntry): LobbyKit and SledHeadless share this category, and CreateEntry
+            // throws if the entry already exists, so the second mod to load must reuse the existing entries.
             _serverSettings = MelonPreferences.CreateCategory("ServerSettings", "Server Settings");
-            _serverName = _serverSettings.CreateEntry("ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
-            _serverCapacity = _serverSettings.CreateEntry("ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
-            _isPublicLobby = _serverSettings.CreateEntry("IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
-            _isPasswordProtected = _serverSettings.CreateEntry("IsPasswordProtected", false, "Password Protected", "Saved default for password protection.");
-            _lobbyPassword = _serverSettings.CreateEntry("LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
-            _isPeacefulMode = _serverSettings.CreateEntry("IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
-            _isTextChatOnly = _serverSettings.CreateEntry("IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
+            _serverName = GetOrCreate(_serverSettings, "ServerName", string.Empty, "Server Name", "Custom default lobby/server name. Leave empty to use '<PlayerName>\'s Lobby'.");
+            _serverCapacity = GetOrCreate(_serverSettings, "ServerCapacity", 8, "Server Capacity", "Saved default value for the max players slider.");
+            _isPublicLobby = GetOrCreate(_serverSettings, "IsPublicLobby", true, "Public Lobby", "Saved default for public/private lobby.");
+            _isPasswordProtected = GetOrCreate(_serverSettings, "IsPasswordProtected", false, "Password Protected", "Saved default for password protection.");
+            _lobbyPassword = GetOrCreate(_serverSettings, "LobbyPassword", string.Empty, "Lobby Password", "Saved default lobby password.");
+            _isPeacefulMode = GetOrCreate(_serverSettings, "IsPeacefulMode", false, "Peaceful Mode", "Saved default for peaceful mode.");
+            _isTextChatOnly = GetOrCreate(_serverSettings, "IsTextChatOnly", false, "Text Chat Only", "Saved default for text-chat-only mode.");
 
             // One-time migration: pull any non-default value users saved under the old "LobbyKit" category into
             // ServerSettings, then drop the stale key. No-ops once migrated (ServerSettings already non-default).
@@ -131,6 +145,12 @@ namespace LobbyKit
             _enableAnticheat = _preferences.CreateEntry("EnableAnticheat", false, "Enable AntiCheat", "Rate-limit and kick clients who spam server RPCs.");
             _enforcePlayerScale = _preferences.CreateEntry("EnforcePlayerScale", true, "Enforce Player Scale", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
             _blockSledPush = _preferences.CreateEntry("BlockSledPush", true, "Block Sled Push", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever). Boosts use a separate path and are unaffected. Disable to allow manual sled pushing.");
+            _prefixMod = _preferences.CreateEntry("ChatPrefixMod", "<#7DFF7D>[Mod]</color> ", "Chat Prefix: Mod", "Prefix shown before a Mod's name in chat. Empty to disable.");
+            _prefixAdmin = _preferences.CreateEntry("ChatPrefixAdmin", "<#7DD0FF>[Admin]</color> ", "Chat Prefix: Admin", "Prefix shown before an Admin's name in chat. Empty to disable.");
+            _prefixOwner = _preferences.CreateEntry("ChatPrefixOwner", "<#FFE066>[Owner]</color> ", "Chat Prefix: Owner", "Prefix shown before an Owner's name in chat. Empty to disable.");
+
+            Features.Permissions.Perms.Initialize();
+            Patches.ChatSystem.SeedCommandLevels();
             MelonPreferences.Save();
 
             HarmonyInstance.PatchAll();
@@ -139,6 +159,15 @@ namespace LobbyKit
             Features.Anticheat.SledPushBlockPatch.Apply(HarmonyInstance);
 
             MelonCoroutines.Start(PlayerCountLogLoop());
+        }
+
+        // GetEntry if it already exists (e.g. SledHeadless created it on the shared ServerSettings category),
+        // otherwise CreateEntry. MelonLoader's CreateEntry throws on a duplicate identifier.
+        private static MelonPreferences_Entry<T> GetOrCreate<T>(MelonPreferences_Category category, string identifier, T defaultValue, string displayName, string description = null)
+        {
+            return category.HasEntry(identifier)
+                ? category.GetEntry<T>(identifier)
+                : category.CreateEntry(identifier, defaultValue, displayName, description);
         }
 
         // Copies a value users previously saved under an old category into its new ServerSettings entry, then
@@ -310,6 +339,20 @@ namespace LobbyKit
             if (p == null)
                 return;
 
+            // Ban enforcement: kick a banned PUID the moment they register (host-side only).
+            if (isHost && p.ConnectionID != 32767 && !p.IsLocalPlayerInstance() &&
+                Features.Permissions.Perms.IsBanned(p.ProductUserId))
+            {
+                Features.Anticheat.KickAnnouncer.Enqueue(p.ConnectionID, "is banned");
+                try { InstanceFinder.ServerManager?.Kick(p.ConnectionID, Il2CppFishNet.Managing.Server.KickReason.Unset); } catch { }
+                MelonLogger.Msg($"[LobbyKit] Banned player kicked on join (conn {p.ConnectionID}, puid {p.ProductUserId}).");
+                return;
+            }
+
+            // Keep stored op/ban names current for anyone tracked in the op-file.
+            if (isHost && p.ConnectionID != 32767)
+                Features.Permissions.Perms.RememberName(p.ProductUserId, Patches.ChatSystem.StripRichText(p.Username));
+
             double nowUptime = GetLobbyUptimeSeconds();
             bool isLocalPlayer = p.IsLocalPlayerInstance();
             bool isNewConnection = !players.Any(player => player != null && player.ConnectionID == p.ConnectionID);
@@ -349,7 +392,7 @@ namespace LobbyKit
                     Patches.ChatSystem.BroadcastSystemMessage($"<size={JoinMessageSize}%><#FA0>{username} joined.");
                 }
                 string logName = Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(p.Username) ? "A player" : p.Username);
-                MelonLogger.Msg($"[LobbyKit] + {logName} joined (conn {p.ConnectionID}) — {RemotePlayerCount} online.");
+                MelonLogger.Msg($"[LobbyKit] + {logName} joined (conn {p.ConnectionID}, puid {p.ProductUserId}) — {RemotePlayerCount} online.");
 
                 // A late joiner spawns existing players from the server's cached transform and missed any earlier
                 // !size ObserversUpdate, so re-broadcast registered sizes across their load window.

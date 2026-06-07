@@ -591,6 +591,9 @@
 		<Reference Include="MelonLoader">
 			<HintPath>$(RefRoot)\net6\MelonLoader.dll</HintPath>
 		</Reference>
+		<Reference Include="Newtonsoft.Json">
+			<HintPath>$(RefRoot)\net6\Newtonsoft.Json.dll</HintPath>
+		</Reference>
 		<Reference Include="0Harmony">
 			<HintPath>$(RefRoot)\net6\0Harmony.dll</HintPath>
 		</Reference>
@@ -663,6 +666,10 @@
     <Compile Include="Features/Anticheat/PlayerScalePacketClamp.cs" />
     <Compile Include="Features/Anticheat/PlayerSizeRegistry.cs" />
     <Compile Include="Features/Anticheat/SledPushBlockPatch.cs" />
+    <Compile Include="Features/Permissions/PermLevel.cs" />
+    <Compile Include="Features/Permissions/Perms.cs" />
+    <Compile Include="Features/Commands/ChatSystem.TeleportCommands.cs" />
+    <Compile Include="Features/Commands/ChatSystem.ModerationCommands.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	
