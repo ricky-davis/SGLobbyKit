@@ -78,15 +78,7 @@ namespace LobbyKit.Patches
         // The full editable-setting registry, grouped by section (order preserved for the list view).
         private static readonly List<ChatSetting> SettingsRegistry = new()
         {
-            SText("name",        "Lobby", () => LobbyKitCore.ServerName,           LobbyKitCore.SetServerName),
-            SInt ("cap",         "Lobby", () => LobbyKitCore.ServerCapacity,        LobbyKitCore.SetServerCapacity, 1, 64),
-            SBool("public",      "Lobby", () => LobbyKitCore.IsPublicLobby,         LobbyKitCore.SetIsPublicLobby),
-            SBool("password",    "Lobby", () => LobbyKitCore.IsPasswordProtected,   LobbyKitCore.SetIsPasswordProtected),
-            SText("pw",          "Lobby", () => LobbyKitCore.LobbyPassword,         LobbyKitCore.SetLobbyPassword, mask: true),
-            SBool("peaceful",    "Lobby", () => LobbyKitCore.IsPeacefulMode,        LobbyKitCore.SetIsPeacefulMode),
-            SBool("textchat",    "Lobby", () => LobbyKitCore.IsTextChatOnly,        LobbyKitCore.SetIsTextChatOnly),
-
-            SBool("bc",          "Mod",   () => LobbyKitCore.EnableGuestBangCommands, LobbyKitCore.SetEnableGuestBangCommands),
+            SBool("bangcommands",          "Mod",   () => LobbyKitCore.EnableGuestBangCommands, LobbyKitCore.SetEnableGuestBangCommands),
             SBool("autorestart", "Mod",   () => LobbyKitCore.AutoRestartOnCrash,    LobbyKitCore.SetAutoRestartOnCrash),
 
             SText("motd",        "Messages", () => LobbyKitCore.MessageOfTheDay,    LobbyKitCore.SetMessageOfTheDay),
@@ -117,6 +109,13 @@ namespace LobbyKit.Patches
         {
             string a = args?.Trim() ?? string.Empty;
 
+            // "!settings ?" always shows the chat list, even for the local host (who otherwise gets the UI menu).
+            if (a == "?")
+            {
+                ShowSettingsList(playerControl, 1);
+                return;
+            }
+
             // No args: a local host (with a real UI) opens the menu; non-host admins (and headless) get the list.
             if (a.Length == 0)
             {
@@ -138,7 +137,7 @@ namespace LobbyKit.Patches
             (string key, string value) = SplitFirstWord(a);
             if (!SettingsByKey.TryGetValue(key, out ChatSetting setting))
             {
-                Reply(playerControl, $"<#FA0>Unknown setting: {key} (try !settings)");
+                Reply(playerControl, $"<#FA0>Unknown setting: {key} (try `!settings ?`)");
                 return;
             }
 

@@ -66,8 +66,8 @@ namespace LobbyKit.Patches
                 hiddenFromHelp: true),
             ["!settings"] = new CommandDefinition(
                 HandleSettingsCommand,
-                "!settings [key] [value]",
-                "View or change LobbyKit settings (e.g. !settings bc on).",
+                "!settings [?|key] [value]",
+                "List settings with '!settings ?', or change e.g. !settings bc on.",
                 minLevel: PermLevel.Admin),
             [MotdCommand] = new CommandDefinition(
                 HandleMotdCommand,
