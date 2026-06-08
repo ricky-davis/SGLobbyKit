@@ -5,6 +5,6 @@
 
 
 ## Other
- - !help paging
  - Offline mode?
  - Proximity chat range
+ - fix headless to hide player model and nametag if possible

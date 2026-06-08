@@ -157,6 +157,7 @@ namespace LobbyKit
             Features.Anticheat.GenericServerRpcRateLimitPatch.ApplyPatches(HarmonyInstance);
             Features.Anticheat.PlayerScalePacketClamp.Apply(HarmonyInstance);
             Features.Anticheat.SledPushBlockPatch.Apply(HarmonyInstance);
+            Features.Fixes.CannonLaunchFix.Apply(HarmonyInstance);
 
             MelonCoroutines.Start(PlayerCountLogLoop());
         }

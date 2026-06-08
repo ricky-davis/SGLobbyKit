@@ -132,9 +132,13 @@ namespace LobbyKit.Patches
                 return;
             }
 
+            // Announce who forced the teleport (the command runner), not a generic "the host".
+            string actorUsername = AutoCloseTmpRichText(
+                Utils.FindPlayerFromConnectionId(playerControl.OwnerId)?.Username ?? "The host");
+
             TeleportPlayerTo(target.PlayerControl, playerControl);
             Reply(playerControl, $"<#FF0>Forced {targetUsername} to TP to you.");
-            BroadcastMessage(target.ConnectionID, $"<#FF0>The host TP'd you to them.");
+            BroadcastMessage(target.ConnectionID, $"<#FF0>{actorUsername} TP'd you to them.");
         }
     }
 }

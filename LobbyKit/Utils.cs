@@ -71,6 +71,36 @@ namespace LobbyKit
             return bestMatch;
         }
 
+        // EXACT (case-insensitive, sanitized) name match only — returns null if no connected player's name
+        // equals `name`. Unlike FindPlayerByName this never fuzzy-matches, so it's safe for detecting the
+        // exact boundary of a player name inside a longer argument string (e.g. "<name> <reason>"), including
+        // names with spaces, quotes, or other special characters.
+        public static PlayerReference FindPlayerByExactName(string name, bool sanitized = true)
+        {
+            if (string.IsNullOrWhiteSpace(name))
+                return null;
+
+            var manager = PlayerReferenceManager.Instance;
+            if (manager == null || manager.sync_PlayerReferences == null)
+                return null;
+
+            for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
+            {
+                PlayerReference playerRef = manager.sync_PlayerReferences[i];
+                if (playerRef == null)
+                    continue;
+
+                string username = sanitized ? SanitizeUsername(playerRef.Username) : playerRef.Username;
+                if (string.IsNullOrWhiteSpace(username))
+                    continue;
+
+                if (username.Equals(name, StringComparison.OrdinalIgnoreCase))
+                    return playerRef;
+            }
+
+            return null;
+        }
+
         public static PlayerReference FindPlayerFromConnectionId(int connectionId)
         {
             var manager = PlayerReferenceManager.Instance;

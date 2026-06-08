@@ -36,9 +36,10 @@ namespace LobbyKit.Patches
         {
             if (string.IsNullOrWhiteSpace(args)) { Reply(playerControl, "<#F00>Usage: !kick <name> [reason]"); return; }
 
-            (string name, string reason) = SplitFirstWord(args);
-            PlayerReference target = Utils.FindPlayerByName(name, sanitized: true);
-            if (target == null) { Reply(playerControl, $"<#FA0>Player not found: {name}"); return; }
+            // Resolve the target by name — exact match first (so names with spaces/quotes/special chars
+            // resolve precisely and the rest becomes the reason), then fuzzy for typos. See ResolveLeadingPlayer.
+            (PlayerReference target, string reason) = ResolveLeadingPlayer(args);
+            if (target == null) { Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}"); return; }
             if (target.ConnectionID == playerControl.OwnerId) { Reply(playerControl, "<#FA0>You can't kick yourself."); return; }
             if (Perms.GetLevel(target.ConnectionID) >= Perms.GetLevel(playerControl.OwnerId))
             { Reply(playerControl, "<#FA0>You can't kick someone of equal or higher level."); return; }
@@ -58,14 +59,20 @@ namespace LobbyKit.Patches
         {
             if (string.IsNullOrWhiteSpace(args)) { Reply(playerControl, "<#F00>Usage: !ban <name|puid> [reason]"); return; }
 
-            (string nameOrPuid, string reason) = SplitFirstWord(args);
-            string puid = null; int conn = -1; string targetName = null; string display = nameOrPuid;
+            // Resolve an online player by name — exact match first (names with spaces/quotes/special chars),
+            // then fuzzy for typos; the rest is the reason. A PUID token never fuzzy-matches a name (see
+            // ResolveLeadingPlayer), so if nothing resolves we treat the first token as a PUID (offline ban).
+            (PlayerReference target, string reason) = ResolveLeadingPlayer(args);
+            string puid = null; int conn = -1; string targetName = null; string display = args.Trim();
 
-            PlayerReference target = Utils.FindPlayerByName(nameOrPuid, sanitized: true);
             if (target != null) { puid = target.ProductUserId; conn = target.ConnectionID; targetName = StripRichText(target.Username); display = AutoCloseTmpRichText(target.Username); }
-            else if (LooksLikePuid(nameOrPuid)) { puid = nameOrPuid; }
+            else
+            {
+                string firstToken = SplitFirstWord(args).First;
+                if (LooksLikePuid(firstToken)) { puid = firstToken; display = firstToken; }
+            }
 
-            if (string.IsNullOrWhiteSpace(puid)) { Reply(playerControl, $"<#FA0>Player not found: {nameOrPuid}. Pass an online name or a PUID."); return; }
+            if (string.IsNullOrWhiteSpace(puid)) { Reply(playerControl, $"<#FA0>Player not found: {args.Trim()}. Pass an online name or a PUID."); return; }
             if (conn == playerControl.OwnerId) { Reply(playerControl, "<#FA0>You can't ban yourself."); return; }
             if (conn >= 0 && Perms.GetLevel(conn) >= Perms.GetLevel(playerControl.OwnerId))
             { Reply(playerControl, "<#FA0>You can't ban someone of equal or higher level."); return; }

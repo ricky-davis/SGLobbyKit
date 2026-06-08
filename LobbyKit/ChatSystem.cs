@@ -61,8 +61,8 @@ namespace LobbyKit.Patches
         {
             ["!help"] = new CommandDefinition(
                 HandleHelpCommand,
-                "!help [command]",
-                "Shows available commands or details for one command.",
+                "!help [command|page]",
+                "Lists commands (paged) or details for one command.",
                 hiddenFromHelp: true),
             ["!settings"] = new CommandDefinition(
                 OpenSettingsMenu,
@@ -538,29 +538,100 @@ namespace LobbyKit.Patches
             LastCommandBySource[connectionId] = (message, Time.frameCount);
         }
 
+        // The in-game chatbox hard-wraps at this many characters per line (including any sender prefix), and
+        // we keep each help page to this many lines (a header line + command lines). Each Reply renders as one
+        // chat line, so every help line must stay within HelpLineChars (else it wraps into extra lines).
+        private const int HelpLineChars = 36;
+        private const int HelpLinesPerPage = 8;
+
         private static void HandleHelpCommand(PlayerControl playerControl, string args)
         {
-            string helpSizing = "<size=75%>";
-            if (!string.IsNullOrWhiteSpace(args))
+            string a = args?.Trim() ?? string.Empty;
+
+            // !help <command> → detailed help for a single command (anything non-numeric is a command name).
+            if (a.Length > 0 && !int.TryParse(a, out _))
             {
-                string requested = args.Trim();
-                if (!requested.StartsWith("!", StringComparison.Ordinal))
-                    requested = "!" + requested;
-
+                string requested = a.StartsWith("!", StringComparison.Ordinal) ? a : "!" + a;
                 if (Commands.TryGetValue(requested, out CommandDefinition command) && CanShowInHelp(requested, command, playerControl))
-                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(requested, command)} - {command.Description}");
+                {
+                    foreach (string line in HelpWordWrap($"{FormatCommandUsage(requested, command)} - {command.Description}", HelpLineChars, HelpLinesPerPage))
+                        Reply(playerControl, HelpLine(line));
+                }
                 else
-                    Reply(playerControl, $"{helpSizing}<#FA0>Unknown command: {requested}");
-
+                {
+                    Reply(playerControl, HelpLine($"Unknown command: {requested}", warn: true));
+                }
                 return;
             }
 
-            Reply(playerControl, $"{helpSizing}<#7FF>Available commands:");
+            // List view, paginated. Each visible command is one line (usage, truncated to the line width).
+            var entries = new List<string>();
             foreach (var entry in Commands)
-            {
                 if (CanShowInHelp(entry.Key, entry.Value, playerControl))
-                    Reply(playerControl, $"{helpSizing}<#7FF>{FormatCommandUsage(entry.Key, entry.Value)}");
+                    entries.Add(HelpTruncate(FormatCommandUsage(entry.Key, entry.Value), HelpLineChars));
+
+            if (entries.Count == 0)
+            {
+                Reply(playerControl, HelpLine("No commands available."));
+                return;
             }
+
+            // First line is always a header showing the page number; the rest of the page lists commands.
+            int perPage = HelpLinesPerPage - 1;
+            int pages = (entries.Count + perPage - 1) / perPage;
+
+            int page = (a.Length > 0 && int.TryParse(a, out int p)) ? p : 1;
+            page = Math.Max(1, Math.Min(page, pages));
+
+            string header = $"Commands (Page {page}/{pages})";
+            if (page < pages) header += $" !help {page + 1}";
+            Reply(playerControl, HelpLine(HelpTruncate(header, HelpLineChars), header: true));
+
+            int start = (page - 1) * perPage;
+            int stop = Math.Min(start + perPage, entries.Count);
+            for (int i = start; i < stop; i++)
+                Reply(playerControl, HelpLine(entries[i]));
+        }
+
+        // One help chat line: keeps the existing small size; yellow header, blue content, amber warning.
+        private static string HelpLine(string text, bool header = false, bool warn = false)
+            => $"<size=75%><#{(warn ? "FA0" : header ? "FF0" : "7FF")}>{text}";
+
+        private static string HelpTruncate(string s, int max)
+        {
+            if (string.IsNullOrEmpty(s) || s.Length <= max) return s;
+            return max <= 1 ? s.Substring(0, max) : s.Substring(0, max - 1) + "…";
+        }
+
+        // Greedy word-wrap of PLAIN text (no rich-text tags) to lines of at most maxChars, capped at maxLines.
+        // A single token longer than a line is hard-trimmed with an ellipsis.
+        private static List<string> HelpWordWrap(string text, int maxChars, int maxLines)
+        {
+            var lines = new List<string>();
+            if (string.IsNullOrWhiteSpace(text)) return lines;
+
+            var current = new System.Text.StringBuilder();
+            foreach (string word in text.Split(new[] { ' ' }, StringSplitOptions.RemoveEmptyEntries))
+            {
+                string w = word.Length > maxChars ? word.Substring(0, maxChars - 1) + "…" : word;
+                if (current.Length == 0)
+                {
+                    current.Append(w);
+                }
+                else if (current.Length + 1 + w.Length <= maxChars)
+                {
+                    current.Append(' ').Append(w);
+                }
+                else
+                {
+                    lines.Add(current.ToString());
+                    current.Clear();
+                    if (lines.Count >= maxLines) return lines;
+                    current.Append(w);
+                }
+            }
+            if (current.Length > 0 && lines.Count < maxLines) lines.Add(current.ToString());
+            return lines;
         }
 
         private static bool CanShowInHelp(string commandName, CommandDefinition command, PlayerControl playerControl)
@@ -681,6 +752,53 @@ namespace LobbyKit.Patches
             if (string.IsNullOrWhiteSpace(args)) return (string.Empty, string.Empty);
             string[] p = args.Trim().Split(new[] { ' ' }, 2, StringSplitOptions.RemoveEmptyEntries);
             return (p[0], p.Length > 1 ? p[1].Trim() : string.Empty);
+        }
+
+        // Splits "<name> [trailing...]" where <name> is an ONLINE player's name that may contain spaces,
+        // quotes, or other special characters (e.g. a player literally named: "I don't know"). We can't rely
+        // on whitespace to find the name boundary, and we don't use quoting (the name itself may contain
+        // quotes). Instead we greedily try the longest word-prefix of args and shrink it one word at a time
+        // until it EXACTLY matches a connected player's name; everything after that is the trailing remainder
+        // (e.g. a kick/ban reason). Returns (null, "") when no exact-name prefix matches — callers may then
+        // fall back to a fuzzy single-word match for typo tolerance.
+        private static (PlayerReference Match, string Remainder) MatchLeadingPlayer(string args)
+        {
+            if (string.IsNullOrWhiteSpace(args)) return (null, string.Empty);
+            string s = args.Trim();
+
+            int cut = s.Length;
+            while (cut > 0)
+            {
+                string candidate = s.Substring(0, cut);
+                PlayerReference match = Utils.FindPlayerByExactName(candidate, sanitized: true);
+                if (match != null)
+                    return (match, s.Substring(cut).Trim());
+
+                // Back up to the previous space so the next candidate ends on a word boundary.
+                int prevSpace = s.LastIndexOf(' ', cut - 1);
+                if (prevSpace < 0) break;
+                cut = prevSpace;
+            }
+
+            return (null, string.Empty);
+        }
+
+        // Resolves a leading player reference from a command's args, supporting names with spaces/special
+        // characters via MatchLeadingPlayer, and falling back to the legacy single-word fuzzy match (typo
+        // tolerance) when no exact-name prefix matches. Returns the player (null if unresolved) and the
+        // trailing remainder (e.g. a reason).
+        private static (PlayerReference Target, string Remainder) ResolveLeadingPlayer(string args)
+        {
+            var (exact, remainder) = MatchLeadingPlayer(args);
+            if (exact != null) return (exact, remainder);
+
+            var (firstWord, rest) = SplitFirstWord(args);
+            // Never fuzzy-match a PUID-looking token to a player NAME — that could ban/kick the wrong online
+            // player (a long PUID can exceed the loose 0.1 similarity threshold against a short name). A real
+            // player literally named like a PUID would already have matched above via the exact pass, so this
+            // only suppresses the fuzzy fallback and lets callers (e.g. !ban) handle the token as a PUID.
+            if (LooksLikePuid(firstWord)) return (null, rest);
+            return (Utils.FindPlayerByName(firstWord, sanitized: true), rest);
         }
 
         private static bool LooksLikePuid(string value)
