@@ -68,7 +68,7 @@ namespace LobbyKit.Patches
                 HandleSettingsCommand,
                 "!settings [?|key] [value]",
                 "List settings with '!settings ?', or change e.g. !settings bc on.",
-                minLevel: PermLevel.Admin),
+                minLevel: PermLevel.Owner),
             [MotdCommand] = new CommandDefinition(
                 HandleMotdCommand,
                 "!motd [message]",
@@ -119,7 +119,7 @@ namespace LobbyKit.Patches
                 HandleLevelCommand,
                 "!level [name]",
                 "Show your level, or another player's.",
-                minLevel: PermLevel.Mod),
+                hiddenFromHelp: true),
             ["!confirm"] = new CommandDefinition(
                 HandleConfirmCommand,
                 "!confirm",
@@ -595,7 +595,7 @@ namespace LobbyKit.Patches
         private static string HelpTruncate(string s, int max)
         {
             if (string.IsNullOrEmpty(s) || s.Length <= max) return s;
-            return max <= 1 ? s.Substring(0, max) : s.Substring(0, max - 1) + "…";
+            return max <= 1 ? s.Substring(0, max) : s.Substring(0, max - 2) + "…";
         }
 
         // Greedy word-wrap of PLAIN text (no rich-text tags) to lines of at most maxChars, capped at maxLines.
