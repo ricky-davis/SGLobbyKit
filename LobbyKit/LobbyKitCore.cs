@@ -48,12 +48,10 @@ namespace LobbyKit
         private static MelonPreferences_Entry<int> _joinMessageSize;
         private static MelonPreferences_Entry<int> _leaveMessageSize;
         private static MelonPreferences_Entry<bool> _autoRestartOnCrash;
-        private static MelonPreferences_Entry<bool> _enableAnticheat;
-        private static MelonPreferences_Entry<bool> _enforcePlayerScale;
-        private static MelonPreferences_Entry<bool> _blockSledPush;
-        private static MelonPreferences_Entry<string> _prefixMod;
-        private static MelonPreferences_Entry<string> _prefixAdmin;
-        private static MelonPreferences_Entry<string> _prefixOwner;
+        private static MelonPreferences_Entry<bool> _blockThrowingSpam;
+        private static MelonPreferences_Entry<bool> _blockPlayerSizeCheat;
+        private static MelonPreferences_Entry<bool> _blockFlyingSleds;
+        private static MelonPreferences_Entry<System.Collections.Generic.List<string>> _chatPrefixes;
 
         public static bool EnableGuestBangCommands => _enableGuestBangCommands?.Value ?? true;
         public static string ServerName => _serverName?.Value ?? string.Empty;
@@ -77,18 +75,18 @@ namespace LobbyKit
         public static int JoinMessageSize => _joinMessageSize?.Value ?? 75;
         public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
         public static bool AutoRestartOnCrash => _autoRestartOnCrash?.Value ?? false;
-        public static bool EnableAnticheat => _enableAnticheat?.Value ?? false;
-        public static bool EnforcePlayerScale => _enforcePlayerScale?.Value ?? true;
-        public static bool BlockSledPush => _blockSledPush?.Value ?? true;
+        public static bool BlockThrowingSpam => _blockThrowingSpam?.Value ?? true;
+        public static bool BlockPlayerSizeCheat => _blockPlayerSizeCheat?.Value ?? true;
+        public static bool BlockFlyingSleds => _blockFlyingSleds?.Value ?? true;
 
-        // Chat prefix shown before a player's name, by permission level. Empty string disables that level's prefix.
-        public static string ChatPrefixFor(Features.Permissions.PermLevel level) => level switch
+        // Chat prefixes by permission level, stored as one list [Mod, Admin, Owner] (index = (int)level - 1).
+        // Empty string disables that level's prefix.
+        public static string ChatPrefixFor(Features.Permissions.PermLevel level)
         {
-            Features.Permissions.PermLevel.Owner => _prefixOwner?.Value ?? string.Empty,
-            Features.Permissions.PermLevel.Admin => _prefixAdmin?.Value ?? string.Empty,
-            Features.Permissions.PermLevel.Mod => _prefixMod?.Value ?? string.Empty,
-            _ => string.Empty
-        };
+            int idx = (int)level - 1; // Mod(1)->0, Admin(2)->1, Owner(3)->2
+            var list = _chatPrefixes?.Value;
+            return (list != null && idx >= 0 && idx < list.Count && list[idx] != null) ? list[idx] : string.Empty;
+        }
 
         private PlayerReferenceManager _playerReferenceManager;
 
@@ -142,12 +140,13 @@ namespace LobbyKit
             _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
-            _enableAnticheat = _preferences.CreateEntry("EnableAnticheat", false, "Enable AntiCheat", "Rate-limit and kick clients who spam server RPCs.");
-            _enforcePlayerScale = _preferences.CreateEntry("EnforcePlayerScale", true, "Enforce Player Scale", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
-            _blockSledPush = _preferences.CreateEntry("BlockSledPush", true, "Block Sled Push", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever). Boosts use a separate path and are unaffected. Disable to allow manual sled pushing.");
-            _prefixMod = _preferences.CreateEntry("ChatPrefixMod", "<#7DFF7D>[Mod]</color> ", "Chat Prefix: Mod", "Prefix shown before a Mod's name in chat. Empty to disable.");
-            _prefixAdmin = _preferences.CreateEntry("ChatPrefixAdmin", "<#7DD0FF>[Admin]</color> ", "Chat Prefix: Admin", "Prefix shown before an Admin's name in chat. Empty to disable.");
-            _prefixOwner = _preferences.CreateEntry("ChatPrefixOwner", "<#FFE066>[Owner]</color> ", "Chat Prefix: Owner", "Prefix shown before an Owner's name in chat. Empty to disable.");
+            _blockThrowingSpam = _preferences.CreateEntry("BlockThrowingSpam", false, "Block Throwing Spam", "Anticheat: rate-limit and kick clients who spam server RPCs (e.g. rapid throwing).");
+            _blockPlayerSizeCheat = _preferences.CreateEntry("BlockPlayerSizeCheat", true, "Block Player Size Cheat", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
+            _blockFlyingSleds = _preferences.CreateEntry("BlockFlyingSleds", true, "Block Flying Sleds", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever used to fly sleds). Boosts use a separate path and are unaffected.");
+            _chatPrefixes = _preferences.CreateEntry("ChatPrefixes",
+                new System.Collections.Generic.List<string> { "<#7DFF7D>[Mod]</color> ", "<#7DD0FF>[Admin]</color> ", "<#FFE066>[Owner]</color> " },
+                "Chat Prefixes",
+                "Prefixes shown before a name in chat, by level: [Mod, Admin, Owner]. Empty string disables that level's prefix.");
 
             Features.Permissions.Perms.Initialize();
             Patches.ChatSystem.SeedCommandLevels();
@@ -198,7 +197,7 @@ namespace LobbyKit
         // Runs after all gameplay Updates each frame; re-asserts player scale so a size cheat can't stick.
         public override void OnLateUpdate()
         {
-            if (EnforcePlayerScale)
+            if (BlockPlayerSizeCheat)
                 Features.Anticheat.PlayerScaleEnforcer.Tick();
         }
 
@@ -798,12 +797,39 @@ namespace LobbyKit
             MelonPreferences.Save();
         }
 
-        public static void SetEnableAnticheat(bool value)
+        public static void SetBlockThrowingSpam(bool value)
         {
-            if (_enableAnticheat == null)
-                return;
+            if (_blockThrowingSpam == null) return;
+            _blockThrowingSpam.Value = value;
+            MelonPreferences.Save();
+        }
 
-            _enableAnticheat.Value = value;
+        public static void SetBlockPlayerSizeCheat(bool value)
+        {
+            if (_blockPlayerSizeCheat == null) return;
+            _blockPlayerSizeCheat.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetBlockFlyingSleds(bool value)
+        {
+            if (_blockFlyingSleds == null) return;
+            _blockFlyingSleds.Value = value;
+            MelonPreferences.Save();
+        }
+
+        // Sets a single level's chat prefix within the ChatPrefixes list (index = (int)level - 1), growing the
+        // list as needed so any of Mod/Admin/Owner can be set independently.
+        public static void SetChatPrefix(Features.Permissions.PermLevel level, string value)
+        {
+            if (_chatPrefixes == null) return;
+            int idx = (int)level - 1; // Mod(1)->0, Admin(2)->1, Owner(3)->2
+            if (idx < 0) return;
+
+            var list = _chatPrefixes.Value ?? new System.Collections.Generic.List<string>();
+            while (list.Count <= idx) list.Add(string.Empty);
+            list[idx] = value ?? string.Empty;
+            _chatPrefixes.Value = list;
             MelonPreferences.Save();
         }
 

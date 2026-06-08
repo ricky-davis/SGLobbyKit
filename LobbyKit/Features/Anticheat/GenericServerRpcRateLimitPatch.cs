@@ -89,7 +89,7 @@ namespace LobbyKit.Features.Anticheat
         {
             int ownerId = __instance.OwnerId;
 
-            if (ownerId == HostConnectionId || !LobbyKitCore.EnableAnticheat)
+            if (ownerId == HostConnectionId || !LobbyKitCore.BlockThrowingSpam)
                 return true;
             float now = Time.realtimeSinceStartup;
             int token = __originalMethod.MetadataToken;

@@ -671,6 +671,7 @@
     <Compile Include="Features/Permissions/Perms.cs" />
     <Compile Include="Features/Commands/ChatSystem.TeleportCommands.cs" />
     <Compile Include="Features/Commands/ChatSystem.ModerationCommands.cs" />
+    <Compile Include="Features/Commands/ChatSystem.SettingsCommands.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	

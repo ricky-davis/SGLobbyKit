@@ -126,6 +126,14 @@ namespace LobbyKit.Features.Settings
                 draft.LeaveMessageSize,
                 value => draft.LeaveMessageSize = value);
 
+            AddDivider(content, "Anticheat");
+            foreach (SettingsField field in SettingsSchema.AnticheatFields)
+                AddSchemaField(content, field, draft);
+
+            AddDivider(content, "Chat Prefixes");
+            foreach (SettingsField field in SettingsSchema.PrefixFields)
+                AddSchemaField(content, field, draft);
+
             AddActionButtons(panel.Transform);
 
             return new SettingsMenuHandle(root, _firstSelectable);

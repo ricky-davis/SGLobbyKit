@@ -75,7 +75,7 @@ namespace LobbyKit.Features.Anticheat
             try
             {
                 if (!InstanceFinder.IsServerStarted) return true;   // only act as the host
-                if (!LobbyKitCore.BlockSledPush) return true;       // pref off -> allow all pushes
+                if (!LobbyKitCore.BlockFlyingSleds) return true;       // pref off -> allow all pushes
                 if (_cmdPushDepth <= 0) return true;                // not a client Cmd (e.g. SpeedBoost) -> allow
 
                 _blockedCount++;

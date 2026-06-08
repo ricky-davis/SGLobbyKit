@@ -73,7 +73,7 @@ namespace LobbyKit.Features.Anticheat
         {
             try
             {
-                if (!LobbyKitCore.EnforcePlayerScale) return;
+                if (!LobbyKitCore.BlockPlayerSizeCheat) return;
                 if (!InstanceFinder.IsServerStarted) return;
 
                 var arr = __0.Array;

@@ -90,16 +90,54 @@ namespace LobbyKit.Features.Settings
                 "Auto-Restart Lobby On Crash",
                 draft => draft.AutoRestartOnCrash,
                 (draft, value) => draft.AutoRestartOnCrash = value),
-            new ToggleSettingsField(
-                "enable-anticheat",
-                "Enable AntiCheat (experimental)",
-                draft => draft.EnableAnticheat,
-                (draft, value) => draft.EnableAnticheat = value),
             new TextSettingsField(
                 "message-of-the-day",
                 "Message of the Day",
                 draft => draft.MessageOfTheDay,
                 (draft, value) => draft.MessageOfTheDay = value ?? string.Empty)
+        };
+
+        // Anticheat toggles — rendered under an "Anticheat" divider in the menu.
+        public static IReadOnlyList<SettingsField> AnticheatFields { get; } = new SettingsField[]
+        {
+            new ToggleSettingsField(
+                "block-throwing-spam",
+                "Block Throwing Spam",
+                draft => draft.BlockThrowingSpam,
+                (draft, value) => draft.BlockThrowingSpam = value),
+            new ToggleSettingsField(
+                "block-player-size-cheat",
+                "Block Player Size Cheat",
+                draft => draft.BlockPlayerSizeCheat,
+                (draft, value) => draft.BlockPlayerSizeCheat = value),
+            new ToggleSettingsField(
+                "block-flying-sleds",
+                "Block Flying Sleds",
+                draft => draft.BlockFlyingSleds,
+                (draft, value) => draft.BlockFlyingSleds = value)
+        };
+
+        // Chat name-prefix text fields by level — rendered under a "Chat Prefixes" divider in the menu.
+        public static IReadOnlyList<SettingsField> PrefixFields { get; } = new SettingsField[]
+        {
+            new TextSettingsField(
+                "chat-prefix-mod",
+                "Chat Prefix: Mod",
+                draft => draft.PrefixMod,
+                (draft, value) => draft.PrefixMod = value ?? string.Empty,
+                placeholder: "<#7DFF7D>[Mod]</color> "),
+            new TextSettingsField(
+                "chat-prefix-admin",
+                "Chat Prefix: Admin",
+                draft => draft.PrefixAdmin,
+                (draft, value) => draft.PrefixAdmin = value ?? string.Empty,
+                placeholder: "<#7DD0FF>[Admin]</color> "),
+            new TextSettingsField(
+                "chat-prefix-owner",
+                "Chat Prefix: Owner",
+                draft => draft.PrefixOwner,
+                (draft, value) => draft.PrefixOwner = value ?? string.Empty,
+                placeholder: "<#FFE066>[Owner]</color> ")
         };
     }
 }

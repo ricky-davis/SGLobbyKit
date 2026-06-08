@@ -65,19 +65,14 @@ namespace LobbyKit.Patches
                 "Lists commands (paged) or details for one command.",
                 hiddenFromHelp: true),
             ["!settings"] = new CommandDefinition(
-                OpenSettingsMenu,
-                "!settings",
-                "Open LobbyKit settings.",
+                HandleSettingsCommand,
+                "!settings [key] [value]",
+                "View or change LobbyKit settings (e.g. !settings bc on).",
                 minLevel: PermLevel.Admin),
             [MotdCommand] = new CommandDefinition(
                 HandleMotdCommand,
                 "!motd [message]",
                 "Show the message of the day. Admins can pass text to set it."),
-            ["!bc"] = new CommandDefinition(
-                HandleBangCommandsCommand,
-                "!bc [on|off]",
-                "Enable or disable guest bang commands.",
-                minLevel: PermLevel.Admin),
             ["!tp"] = new CommandDefinition(
                 HandleTpCommand,
                 "!tp [name]",
@@ -663,33 +658,6 @@ namespace LobbyKit.Patches
 
         private static string LevelLabel(int level)
             => level > (int)PermLevel.Owner ? "Disabled" : ((PermLevel)level).DisplayName();
-
-        private static void HandleBangCommandsCommand(PlayerControl playerControl, string args)
-        {
-            if (string.IsNullOrWhiteSpace(args))
-            {
-                string state = LobbyKitCore.EnableGuestBangCommands ? "enabled" : "disabled";
-                Reply(playerControl, $"<#7FF>Guest bang commands are {state}. Usage: !bangcommands <on|off>");
-                return;
-            }
-
-            string value = args.Trim().ToLowerInvariant();
-            bool? enabled = value switch
-            {
-                "on" or "enable" or "enabled" or "true" or "1" => true,
-                "off" or "disable" or "disabled" or "false" or "0" => false,
-                _ => null
-            };
-
-            if (!enabled.HasValue)
-            {
-                Reply(playerControl, "<#F00>Usage: !bangcommands <on|off>");
-                return;
-            }
-
-            LobbyKitCore.SetEnableGuestBangCommands(enabled.Value);
-            Reply(playerControl, $"<#FF0>Guest bang commands {(enabled.Value ? "enabled" : "disabled")}.");
-        }
 
         private static void HandleMotdCommand(PlayerControl playerControl, string args)
         {
