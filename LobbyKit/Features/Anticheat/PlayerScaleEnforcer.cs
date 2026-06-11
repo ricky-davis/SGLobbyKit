@@ -6,7 +6,9 @@ using UnityEngine;
 
 namespace LobbyKit.Features.Anticheat
 {
-    // Server-side anticheat: keeps every non-host player's avatar root at scale 1,1,1 on the SERVER.
+    // Server-side anticheat: keeps every non-host player's avatar root at their REGISTERED size on the SERVER
+    // (PlayerSizeRegistry.GetSize, default 1,1,1 — a player's chosen !size is their registered value, so this
+    // enforces it rather than fighting it back to 1).
     //
     // Design (LobbyKit is server-first):
     //   - Runs ONLY on the host (InstanceFinder.IsServerStarted). No-op on pure clients.
@@ -46,31 +48,38 @@ namespace LobbyKit.Features.Anticheat
 
             foreach (var pc in _cache)
             {
-                if (pc == null)
+                if (pc == null || !pc.IsSpawned)   // skip despawned/pooled objects (a left player's nob lingers)
                     continue;
 
                 int owner;
                 try { owner = pc.OwnerId; } catch { continue; }
-                if (owner == hostConnId)            // never affect the host's own player
+                // Skip the host's own player AND server-owned / despawning objects (OwnerId -1 after a player
+                // leaves): those aren't real remote clients, and clamping them spams the log post-leave.
+                if (owner == hostConnId || owner < 0)
                     continue;
+
+                // Target = the player's REGISTERED size (their !size choice, default 1.0) — NOT a hardcoded 1,
+                // so a legitimate !size is enforced instead of being fought back to 1 (which spammed the log
+                // and reset the server copy / new-joiner baseline every frame). Mirrors PlayerScalePacketClamp.
+                float target = PlayerSizeRegistry.GetSize(owner);
 
                 Transform t = pc.transform;
                 Vector3 s = t.localScale;
-                if (Mathf.Abs(s.x - 1f) <= Tolerance && Mathf.Abs(s.y - 1f) <= Tolerance && Mathf.Abs(s.z - 1f) <= Tolerance)
+                if (Mathf.Abs(s.x - target) <= Tolerance && Mathf.Abs(s.y - target) <= Tolerance && Mathf.Abs(s.z - target) <= Tolerance)
                     continue;
 
-                t.localScale = Vector3.one;   // clamp the server's copy only — no ownership transfer
-                LogCorrection(owner, s);
+                t.localScale = new Vector3(target, target, target);   // clamp the server's copy only — no ownership transfer
+                LogCorrection(owner, s, target);
             }
         }
 
-        private static void LogCorrection(int owner, Vector3 was)
+        private static void LogCorrection(int owner, Vector3 was, float target)
         {
             float now = Time.unscaledTime;
             if (_lastLoggedByOwner.TryGetValue(owner, out float last) && now - last < 5f)
                 return;
             _lastLoggedByOwner[owner] = now;
-            MelonLogger.Msg($"[LobbyKit] Anticheat: player size (client={owner}) was ({was.x:F2},{was.y:F2},{was.z:F2}) — clamped server copy to 1,1,1.");
+            MelonLogger.Msg($"[LobbyKit] Anticheat: player size (client={owner}) was ({was.x:F2},{was.y:F2},{was.z:F2}) — clamped server copy to {target:0.##}.");
         }
     }
 }

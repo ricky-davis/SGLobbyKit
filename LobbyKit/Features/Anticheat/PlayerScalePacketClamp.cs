@@ -89,7 +89,7 @@ namespace LobbyKit.Features.Anticheat
                 try { hostConnId = InstanceFinder.ClientManager.Connection.ClientId; } catch { }
                 int owner;
                 try { owner = __instance.OwnerId; } catch { return; }
-                if (owner == hostConnId) return;                            // never touch the host's own player
+                if (owner == hostConnId || owner < 0) return;               // never touch the host's own / server-owned players
                 if (__instance.GetComponent<PlayerControl>() == null) return;  // players only
 
                 float target = PlayerSizeRegistry.GetSize(owner);            // their !size choice, default 1.0

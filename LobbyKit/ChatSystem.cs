@@ -314,6 +314,7 @@ namespace LobbyKit.Patches
             int requiredLevel = Perms.GetCommandLevel(commandName, (int)command.MinLevel);
             if ((int)level < requiredLevel)
             {
+                try { MelonLogger.Msg($"[LobbyKit] command DENIED (needs lvl {requiredLevel}) | {CommandSenderName(connectionId, isHostLocal)} ({level}): {commandName}{(string.IsNullOrEmpty(args) ? string.Empty : " " + args)}"); } catch { }
                 BroadcastMessage(connectionId, requiredLevel > (int)PermLevel.Owner
                     ? "<#FA0>That command is disabled."
                     : "<#F00>You don't have permission for that command.");
@@ -337,6 +338,10 @@ namespace LobbyKit.Patches
             if (!string.Equals(trimmedMessage, "!!", StringComparison.Ordinal))
                 LastExplicitCommandBySource[connectionId] = trimmedMessage;
 
+            // Log every command invocation (after it passed the permission/guest gates).
+            try { MelonLogger.Msg($"[LobbyKit] command | {CommandSenderName(connectionId, isHostLocal)} ({level}): {commandName}{(string.IsNullOrEmpty(args) ? string.Empty : " " + args)}"); }
+            catch { }
+
             try
             {
                 command.Handler(playerControl, args);
@@ -349,6 +354,11 @@ namespace LobbyKit.Patches
 
             return true;
         }
+
+        // Clean display name for command logs; falls back to "host" / "conn N" when the reference isn't found.
+        private static string CommandSenderName(int connectionId, bool isHostLocal)
+            => StripRichText(Utils.FindPlayerFromConnectionId(connectionId)?.Username)
+               ?? (isHostLocal ? "host" : $"conn {connectionId}");
 
         private static IEnumerator SendMotdWhenReady(int connectionId)
         {

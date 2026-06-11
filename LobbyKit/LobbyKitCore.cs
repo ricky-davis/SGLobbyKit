@@ -140,11 +140,11 @@ namespace LobbyKit
             _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
-            _blockThrowingSpam = _preferences.CreateEntry("BlockThrowingSpam", false, "Block Throwing Spam", "Anticheat: rate-limit and kick clients who spam server RPCs (e.g. rapid throwing).");
+            _blockThrowingSpam = _preferences.CreateEntry("BlockThrowingSpam", true, "Block Throwing Spam", "Anticheat: rate-limit and kick clients who spam server RPCs (e.g. rapid throwing).");
             _blockPlayerSizeCheat = _preferences.CreateEntry("BlockPlayerSizeCheat", true, "Block Player Size Cheat", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
             _blockFlyingSleds = _preferences.CreateEntry("BlockFlyingSleds", true, "Block Flying Sleds", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever used to fly sleds). Boosts use a separate path and are unaffected.");
             _chatPrefixes = _preferences.CreateEntry("ChatPrefixes",
-                new System.Collections.Generic.List<string> { "<#7DFF7D>[Mod]</color> ", "<#7DD0FF>[Admin]</color> ", "<#FFE066>[Owner]</color> " },
+                new System.Collections.Generic.List<string> { "<#7DFF7D>[M]</color> ", "<#7DD0FF>[A]</color> ", "<#FFE066>[O]</color> " },
                 "Chat Prefixes",
                 "Prefixes shown before a name in chat, by level: [Mod, Admin, Owner]. Empty string disables that level's prefix.");
 
@@ -204,7 +204,10 @@ namespace LobbyKit
         // Number of connected non-host players (excludes the host's own clientHost connection 32767).
         private int RemotePlayerCount => players.Count(pl => pl != null && pl.ConnectionID != 32767);
 
-        // Periodically logs the connected player count (and names) while hosting, as a server heartbeat.
+        // Last "Players online" line we logged, so the periodic check only emits when the roster changes.
+        private string _lastPlayerCountLog;
+
+        // Periodically checks the connected player count (and names) while hosting, logging only when it changes.
         private IEnumerator PlayerCountLogLoop()
         {
             while (true)
@@ -218,7 +221,11 @@ namespace LobbyKit
                         .Where(pl => pl != null && pl.ConnectionID != 32767)
                         .Select(pl => Patches.ChatSystem.StripRichText(string.IsNullOrWhiteSpace(pl.Username) ? "?" : pl.Username))) + "]"
                     : "";
-                MelonLogger.Msg($"[LobbyKit] Players online: {n}{list}");
+                string line = $"[LobbyKit] Players online: {n}{list}";
+                if (line == _lastPlayerCountLog)
+                    continue;
+                _lastPlayerCountLog = line;
+                MelonLogger.Msg(line);
             }
         }
 

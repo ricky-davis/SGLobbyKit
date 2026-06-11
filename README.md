@@ -15,20 +15,56 @@ LobbyKit is primarily a host/server-side mod. Most functionality (especially cha
 - Show live session timers beside player names in the player list.
 - Send join and leave messages with configurable size.
 - Send an optional message of the day to players who join your hosted lobby.
-- Use chat commands for settings and teleport workflows.
+- Grant trusted players Mod/Admin/Owner permissions that survive reconnects, with per-command level requirements.
+- Moderate your lobby with kick, ban, and unban commands.
+- Block common cheats: throwing spam, player-size manipulation, and flying sleds (each toggleable).
+- Optionally auto-restart your hosted lobby.
+- Use chat commands for settings, moderation, permissions, and teleport workflows.
 
 ## Chat Commands
 
-| Command | Host only | Description |
+Commands require a minimum permission level. The host is always Owner, and you can grant other players levels with `!op`. Default levels are shown below; each command's required level can be changed in `UserData/LobbyKit-permissions.json`.
+
+| Command | Min level | Description |
 | --- | --- | --- |
-| `!!` | No | Repeat last command |
-| `!settings` | Yes | Opens the in-game LobbyKit settings menu. |
-| `!motd [message]` | Set: yes | Shows the message of the day. Hosts can pass a message to update it. |
-| `!bc <on\|off>` | Yes | Enables or disables guest bang commands. |
-| `!tp <name>` | No | Teleport to a player by name. |
-| `!tpme <name>` | No | Ask another player to teleport to you. |
-| `!tpa` | No | Accept a pending teleport request. |
-| `!tpf <name>` | Yes | Force a player to teleport to you. |
+| `!!` | Everyone | Repeat your last command. |
+| `!help [command\|page]` | Everyone | List commands (paged), or show details for one command. |
+| `!motd [message]` | Everyone | Show the message of the day. Admins can pass text to set it. |
+| `!tp [name]` | Everyone | Teleport to a player by name. |
+| `!tpme [name]` | Everyone | Ask a player to teleport to you. |
+| `!tpa` | Everyone | Accept a pending teleport request. |
+| `!size [0.2-3.0]` | Everyone | Set your player size (`!size 1` resets to normal). |
+| `!level [name]` | Everyone | Show your level, or another player's. |
+| `!tpf [name]` | Mod | Force a player to teleport to you. |
+| `!kick [name] [reason]` | Mod | Kick a player. |
+| `!ban [name\|puid] [reason]` | Admin | Ban a player (use `!unban` to reverse). |
+| `!unban [name\|puid]` | Admin | Remove a ban by name or PUID. |
+| `!settings [?\|key] [value]` | Owner | List settings with `!settings ?`, or change one, e.g. `!settings bc on`. |
+| `!op [level] [name]` | Owner | Set a player's level (everyone/mod/admin/owner). Requires `!confirm`. |
+
+### Changing or disabling commands per level
+
+The required level for every command lives under `commandLevels` in `UserData/LobbyKit-permissions.json`. Levels are `Everyone = 0`, `Mod = 1`, `Admin = 2`, `Owner = 3`. Edit the file while the server is **stopped** (there is no hot-reload), then restart.
+
+- **Lower the bar** so more players can use a command, e.g. let anyone tp:
+
+  ```json
+  "commandLevels": { "!tp": 0 }
+  ```
+
+- **Raise the bar** to restrict a command, e.g. make teleporting Mod-only:
+
+  ```json
+  "commandLevels": { "!tp": 1 }
+  ```
+
+- **Disable a command** entirely by setting a level above Owner (e.g. `4`):
+
+  ```json
+  "commandLevels": { "!size": 4 }
+  ```
+
+Every command is listed in the file on first run, so you can see and adjust each one. The host (the server itself) is always Owner and can use every enabled command.
 
 ## Installation
 
@@ -47,7 +83,9 @@ For hosted-lobby features, install LobbyKit on the host machine; clients typical
 
 ## Configuration
 
-Most options are available in-game through `!settings` while hosting. The mod also stores preferences through MelonLoader under the `LobbyKit` category.
+Most options are available through `!settings` while hosting — open the in-game menu locally, or list and change settings from chat with `!settings ?` and `!settings <key> [value]`. The mod stores preferences through MelonLoader under the `LobbyKit` category.
+
+Player permissions and bans are stored in `UserData/LobbyKit-permissions.json`, keyed on EOS PUID. Edit it while the server is stopped (no hot-reload), or manage levels and bans live with `!op`, `!ban`, and `!unban`.
 
 ## CI/CD (Thunderstore)
 

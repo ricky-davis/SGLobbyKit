@@ -125,19 +125,19 @@ namespace LobbyKit.Features.Settings
                 "Chat Prefix: Mod",
                 draft => draft.PrefixMod,
                 (draft, value) => draft.PrefixMod = value ?? string.Empty,
-                placeholder: "<#7DFF7D>[Mod]</color> "),
+                placeholder: "<#7DFF7D>[M]</color> "),
             new TextSettingsField(
                 "chat-prefix-admin",
                 "Chat Prefix: Admin",
                 draft => draft.PrefixAdmin,
                 (draft, value) => draft.PrefixAdmin = value ?? string.Empty,
-                placeholder: "<#7DD0FF>[Admin]</color> "),
+                placeholder: "<#7DD0FF>[A]</color> "),
             new TextSettingsField(
                 "chat-prefix-owner",
                 "Chat Prefix: Owner",
                 draft => draft.PrefixOwner,
                 (draft, value) => draft.PrefixOwner = value ?? string.Empty,
-                placeholder: "<#FFE066>[Owner]</color> ")
+                placeholder: "<#FFE066>[O]</color> ")
         };
     }
 }

@@ -2,6 +2,36 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.0] - 2026-06-08
+
+### Added
+
+- Permission system backed by `UserData/LobbyKit-permissions.json`, keyed on EOS PUID so levels and bans survive reconnects. Levels: Everyone, Mod, Admin, Owner (the host is always Owner).
+- `!op [level] [name]` to set a player's level and `!level [name]` to view one (Owner; `!op` requires `!confirm`).
+- Per-command required levels, editable in the permissions file (set a level above Owner to disable a command).
+- Moderation commands: `!kick [name] [reason]` (Mod), `!ban [name|puid] [reason]` and `!unban [name|puid]` (Admin). Names resolve exact-first then fuzzy, with a PUID guard; bans accept an offline PUID.
+- `!size [0.2-3.0]` to set your own player size (`!size 1` resets).
+- Anticheat: throwing-spam rate limiting, player-size cheat packet clamping (also enforced on join), and flying-sled blocking, each individually toggleable.
+- Chat-driven settings: `!settings ?` lists all settings, `!settings <key> [value]` views or changes one.
+- Configurable chat level prefixes for Mod, Admin, and Owner.
+- Paged `!help`, with `!help <page>` and `!help <command>` for details.
+- Auto-restart support for the hosted lobby.
+- Crash protection and silent-crash detection, plus despawning of hacked trinkets.
+
+### Changed
+
+- Settings are now adjustable from chat; standalone `!bc` was removed in favour of `!settings bc <on|off>`.
+- Settings menu gained Anticheat and Chat Prefixes sections.
+- Commands and features split into per-area files under `Features/`.
+
+### Fixed
+
+- Cannons intermittently launching no one after a player rolled a snowball.
+- Player-name resolution for commands.
+- Player size not applying when a player joined.
+- Message of the day not showing for the host's lobby.
+- Pressing Escape with unapplied settings changes now prompts to confirm instead of silently discarding the menu state.
+
 ## [1.0.0] - 2026-05-28
 
 ### Added
