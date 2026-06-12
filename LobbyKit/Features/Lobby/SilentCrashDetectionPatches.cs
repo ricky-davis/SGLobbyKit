@@ -109,8 +109,6 @@ namespace LobbyKit.Patches
                     lobbyId = "<error>";
                 }
 
-                VerboseLog.Msg($"[CrashDetect] Route3/4 poll — serverRunning={serverRunning} | eosLobbyActive={eosLobbyActive} | lobbyId={lobbyId} | WasHosting={LobbyKitCore.WasHosting}");
-
                 if (!serverRunning)
                     MelonLogger.Warning("[CrashDetect] Route3 — IsAnyServerStarted()=false while WasHosting=true: possible silent crash.");
 
