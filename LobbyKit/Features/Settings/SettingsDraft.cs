@@ -18,6 +18,13 @@ namespace LobbyKit.Features.Settings
         public bool ShowLeaveMessages { get; set; }
         public int JoinMessageSize { get; set; }
         public int LeaveMessageSize { get; set; }
+        public bool AutoRestartOnCrash { get; set; }
+        public bool BlockThrowingSpam { get; set; }
+        public bool BlockPlayerSizeCheat { get; set; }
+        public bool BlockFlyingSleds { get; set; }
+        public string PrefixMod { get; set; }
+        public string PrefixAdmin { get; set; }
+        public string PrefixOwner { get; set; }
 
         public static SettingsDraft FromCurrent()
         {
@@ -35,7 +42,14 @@ namespace LobbyKit.Features.Settings
                 ShowJoinMessages = LobbyKitCore.ShowJoinMessages,
                 ShowLeaveMessages = LobbyKitCore.ShowLeaveMessages,
                 JoinMessageSize = LobbyKitCore.JoinMessageSize,
-                LeaveMessageSize = LobbyKitCore.LeaveMessageSize
+                LeaveMessageSize = LobbyKitCore.LeaveMessageSize,
+                AutoRestartOnCrash = LobbyKitCore.AutoRestartOnCrash,
+                BlockThrowingSpam = LobbyKitCore.BlockThrowingSpam,
+                BlockPlayerSizeCheat = LobbyKitCore.BlockPlayerSizeCheat,
+                BlockFlyingSleds = LobbyKitCore.BlockFlyingSleds,
+                PrefixMod = LobbyKitCore.ChatPrefixFor(Features.Permissions.PermLevel.Mod),
+                PrefixAdmin = LobbyKitCore.ChatPrefixFor(Features.Permissions.PermLevel.Admin),
+                PrefixOwner = LobbyKitCore.ChatPrefixFor(Features.Permissions.PermLevel.Owner)
             };
         }
 
@@ -55,7 +69,14 @@ namespace LobbyKit.Features.Settings
                 ShowJoinMessages = ShowJoinMessages,
                 ShowLeaveMessages = ShowLeaveMessages,
                 JoinMessageSize = JoinMessageSize,
-                LeaveMessageSize = LeaveMessageSize
+                LeaveMessageSize = LeaveMessageSize,
+                AutoRestartOnCrash = AutoRestartOnCrash,
+                BlockThrowingSpam = BlockThrowingSpam,
+                BlockPlayerSizeCheat = BlockPlayerSizeCheat,
+                BlockFlyingSleds = BlockFlyingSleds,
+                PrefixMod = PrefixMod,
+                PrefixAdmin = PrefixAdmin,
+                PrefixOwner = PrefixOwner
             };
         }
 
@@ -76,7 +97,14 @@ namespace LobbyKit.Features.Settings
                    ShowJoinMessages == other.ShowJoinMessages &&
                    ShowLeaveMessages == other.ShowLeaveMessages &&
                    JoinMessageSize == other.JoinMessageSize &&
-                   LeaveMessageSize == other.LeaveMessageSize;
+                   LeaveMessageSize == other.LeaveMessageSize &&
+                   AutoRestartOnCrash == other.AutoRestartOnCrash &&
+                   BlockThrowingSpam == other.BlockThrowingSpam &&
+                   BlockPlayerSizeCheat == other.BlockPlayerSizeCheat &&
+                   BlockFlyingSleds == other.BlockFlyingSleds &&
+                   string.Equals(PrefixMod, other.PrefixMod, StringComparison.Ordinal) &&
+                   string.Equals(PrefixAdmin, other.PrefixAdmin, StringComparison.Ordinal) &&
+                   string.Equals(PrefixOwner, other.PrefixOwner, StringComparison.Ordinal);
         }
 
         public void Apply()
@@ -94,6 +122,13 @@ namespace LobbyKit.Features.Settings
             LobbyKitCore.SetShowLeaveMessages(ShowLeaveMessages);
             LobbyKitCore.SetJoinMessageSize(JoinMessageSize);
             LobbyKitCore.SetLeaveMessageSize(LeaveMessageSize);
+            LobbyKitCore.SetAutoRestartOnCrash(AutoRestartOnCrash);
+            LobbyKitCore.SetBlockThrowingSpam(BlockThrowingSpam);
+            LobbyKitCore.SetBlockPlayerSizeCheat(BlockPlayerSizeCheat);
+            LobbyKitCore.SetBlockFlyingSleds(BlockFlyingSleds);
+            LobbyKitCore.SetChatPrefix(Features.Permissions.PermLevel.Mod, PrefixMod);
+            LobbyKitCore.SetChatPrefix(Features.Permissions.PermLevel.Admin, PrefixAdmin);
+            LobbyKitCore.SetChatPrefix(Features.Permissions.PermLevel.Owner, PrefixOwner);
 
             LobbyUiController.Instance.RefreshCreateLobbyFromPreferences();
         }

@@ -591,6 +591,9 @@
 		<Reference Include="MelonLoader">
 			<HintPath>$(RefRoot)\net6\MelonLoader.dll</HintPath>
 		</Reference>
+		<Reference Include="Newtonsoft.Json">
+			<HintPath>$(RefRoot)\net6\Newtonsoft.Json.dll</HintPath>
+		</Reference>
 		<Reference Include="0Harmony">
 			<HintPath>$(RefRoot)\net6\0Harmony.dll</HintPath>
 		</Reference>
@@ -648,11 +651,27 @@
     <Compile Include="Features/Lobby/MainMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyMenuAdapter.cs" />
     <Compile Include="Features/Lobby/LobbyCreateSubmission.cs" />
+    <Compile Include="Features/Anticheat/GenericServerRpcRateLimitPatch.cs" />
+    <Compile Include="Features/Fixes/CannonLaunchFix.cs" />
+    <Compile Include="Features/Anticheat/KickAnnouncer.cs" />
+    <Compile Include="Features/Lobby/CrashProtectionPatches.cs" />
     <Compile Include="Features/Lobby/LobbyPatches.cs" />
+    <Compile Include="Features/Lobby/SilentCrashDetectionPatches.cs" />
+    <Compile Include="Features/Lobby/AutoRestartPatches.cs" />
     <Compile Include="Features/PlayerList/PlayerListTimerController.cs" />
     <Compile Include="Features/PlayerList/PlayerListPatches.cs" />
     <Compile Include="ChatSystem.cs" />
     <Compile Include="Utils.cs" />
+    <Compile Include="VerboseLog.cs" />
+    <Compile Include="Features/Anticheat/PlayerScaleEnforcer.cs" />
+    <Compile Include="Features/Anticheat/PlayerScalePacketClamp.cs" />
+    <Compile Include="Features/Anticheat/PlayerSizeRegistry.cs" />
+    <Compile Include="Features/Anticheat/SledPushBlockPatch.cs" />
+    <Compile Include="Features/Permissions/PermLevel.cs" />
+    <Compile Include="Features/Permissions/Perms.cs" />
+    <Compile Include="Features/Commands/ChatSystem.TeleportCommands.cs" />
+    <Compile Include="Features/Commands/ChatSystem.ModerationCommands.cs" />
+    <Compile Include="Features/Commands/ChatSystem.SettingsCommands.cs" />
 		<Content Include="Directory.Build.props" />
 	</ItemGroup>
 	

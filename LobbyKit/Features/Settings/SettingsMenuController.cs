@@ -19,6 +19,7 @@ namespace LobbyKit.Features.Settings
         private SettingsDraft _draft;
         private SettingsDraft _cleanDraft;
         private Action<bool> _dirtyStateChanged;
+        private bool _closing; // true while we tear the menu down ourselves, so the CloseMenu prefix doesn't re-intercept
 
         public static SettingsMenuController Instance { get; } = new SettingsMenuController();
 
@@ -135,25 +136,47 @@ namespace LobbyKit.Features.Settings
                 return;
             }
 
-            UiReferenceController.Instance?.CloseAllOpenMenus(false);
-            _confirmationRoot = null;
-            Object.Destroy(_root);
-            _root = null;
-            _firstSelectable = null;
-            _draft = null;
-            _cleanDraft = null;
-            _dirtyStateChanged = null;
+            _closing = true;
+            try
+            {
+                UiReferenceController.Instance?.CloseAllOpenMenus(false);
+                _confirmationRoot = null;
+                Object.Destroy(_root);
+                _root = null;
+                _firstSelectable = null;
+                _draft = null;
+                _cleanDraft = null;
+                _dirtyStateChanged = null;
 
-            ForceCloseChat();
-            RestoreClosedCursorState();
+                ForceCloseChat();
+                RestoreClosedCursorState();
+            }
+            finally
+            {
+                _closing = false;
+            }
         }
 
-        public void HandleEscape()
+        // Invoked from a Harmony prefix on UiReferenceController.CloseMenu (the game's Escape / back action).
+        // Returns false to SUPPRESS the game's close because we handle it ourselves; true to let the game close
+        // normally (our menu isn't involved, or we're already closing it).
+        public bool InterceptGameCloseMenu(UiReferenceController uiController)
         {
-            if (_root == null || !UnityEngine.Input.GetKeyDown(KeyCode.Escape))
-                return;
+            if (_root == null || _closing)
+                return true;
 
+            // Only intercept when our settings menu is the menu actually being closed (the current top menu).
+            UiReferenceController.UiToggleableMenu top = uiController != null
+                ? uiController.GetCurrentOpenMenu()
+                : default;
+            if (top.panel != _root)
+                return true;
+
+            // Behave exactly like the Close (X) button: prompt if dirty, else close cleanly. The game calls
+            // CloseMenu repeatedly (twice per Escape press), so this MUST be idempotent — RequestClose only
+            // creates/re-shows the prompt and never toggles it off, so the modal stays put instead of flickering.
             RequestClose();
+            return false;
         }
 
         private void ShowCloseConfirmation()

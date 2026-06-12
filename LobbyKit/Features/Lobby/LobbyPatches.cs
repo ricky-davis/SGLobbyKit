@@ -19,17 +19,7 @@ namespace LobbyKit.Patches
     {
         [HarmonyPatch(typeof(LobbyManager), "CreateLobby")]
         [HarmonyPrefix]
-        private static void LobbyManager_CreateLobby_Prefix(
-            ref string lobbyName,
-            ref int maxPlayers,
-            ref bool isPublic,
-            ref bool proximityChatEnabled,
-            ref bool passwordProtected,
-            ref string password,
-            ref bool peacefulMode,
-            ref string platform,
-            ref string region,
-            ref bool crossplayEnabled)
+        private static void LobbyManager_CreateLobby_Prefix(ref string lobbyName, ref int maxPlayers)
         {
             LobbyUiController.Instance.ApplyLobbyManagerCreateLobby(ref lobbyName, ref maxPlayers);
         }
