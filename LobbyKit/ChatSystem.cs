@@ -88,8 +88,8 @@ namespace LobbyKit.Patches
                 hiddenFromHelp: true),
             ["!tpf"] = new CommandDefinition(
                 HandleTpForceCommand,
-                "!tpf [name]",
-                "Force a player to Teleport to you.",
+                "!tpf [name|@group]",
+                "Force a player to Teleport to you. Groups: @all, @mods, @admins, @owners.",
                 minLevel: PermLevel.Mod),
             ["!size"] = new CommandDefinition(
                 HandleSizeCommand,

@@ -109,7 +109,14 @@ namespace LobbyKit.Patches
         {
             if (string.IsNullOrWhiteSpace(args))
             {
-                Reply(playerControl, "<#F00>Usage: !tpf <name>");
+                Reply(playerControl, "<#F00>Usage: !tpf <name | @all | @mods | @admins | @owners>");
+                return;
+            }
+
+            // Group targets: @all teleports everyone, @mods/@admins/@owners teleport that permission level.
+            if (args.TrimStart().StartsWith("@"))
+            {
+                HandleTpForceGroup(playerControl, args.Trim());
                 return;
             }
 
@@ -139,6 +146,65 @@ namespace LobbyKit.Patches
             TeleportPlayerTo(target.PlayerControl, playerControl);
             Reply(playerControl, $"<#FF0>Forced {targetUsername} to TP to you.");
             BroadcastMessage(target.ConnectionID, $"<#FF0>{actorUsername} TP'd you to them.");
+        }
+
+        // !tpf group targets: @all, @mods, @admins, @owners (singular forms accepted). Teleports every
+        // matching connected player to the command runner. @mods/@admins/@owners match that permission
+        // level EXACTLY (so "@mods" doesn't also yank admins/owners); @all matches everyone. Always
+        // skipped: the runner themself, the host's own player (conn 32767 — on a headless server that's
+        // the seated fake client), and references without a live PlayerControl.
+        private static void HandleTpForceGroup(PlayerControl playerControl, string groupArg)
+        {
+            bool all = false;
+            PermLevel level = PermLevel.Everyone;
+            switch (groupArg.ToLowerInvariant())
+            {
+                case "@all": case "@everyone": all = true; break;
+                case "@mod": case "@mods": level = PermLevel.Mod; break;
+                case "@admin": case "@admins": level = PermLevel.Admin; break;
+                case "@owner": case "@owners": level = PermLevel.Owner; break;
+                default:
+                    Reply(playerControl, $"<#F00>Unknown group '{groupArg}'. Use @all, @mods, @admins or @owners.");
+                    return;
+            }
+
+            var manager = PlayerReferenceManager.Instance;
+            if (manager == null || manager.sync_PlayerReferences == null)
+            {
+                Reply(playerControl, "<#F00>Command failed: player list is not ready.");
+                return;
+            }
+
+            // Announce who forced the teleport (the command runner), not a generic "the host".
+            string actorUsername = AutoCloseTmpRichText(
+                Utils.FindPlayerFromConnectionId(playerControl.OwnerId)?.Username ?? "The host");
+
+            int moved = 0;
+            for (int i = 0; i < manager.sync_PlayerReferences.Count; i++)
+            {
+                PlayerReference playerRef = null;
+                try { playerRef = manager.sync_PlayerReferences[i]; } catch { }
+                if (playerRef == null || playerRef.PlayerControl == null)
+                    continue;
+
+                int conn = playerRef.ConnectionID;
+                if (conn == playerControl.OwnerId) continue;   // never yank the runner to themself
+                if (conn == 32767 || conn < 0) continue;       // never yank the host's own player
+                if (!all && Perms.GetLevel(conn) != level) continue;
+
+                try
+                {
+                    TeleportPlayerTo(playerRef.PlayerControl, playerControl);
+                    BroadcastMessage(conn, $"<#FF0>{actorUsername} TP'd you to them.");
+                    moved++;
+                }
+                catch { /* one bad target must not abort the group sweep */ }
+            }
+
+            string group = groupArg.ToLowerInvariant();
+            Reply(playerControl, moved > 0
+                ? $"<#FF0>Forced {moved} player{(moved == 1 ? "" : "s")} ({group}) to TP to you."
+                : $"<#FA0>No players matched {group}.");
         }
     }
 }

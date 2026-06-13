@@ -35,7 +35,7 @@ Commands require a minimum permission level. The host is always Owner, and you c
 | `!tpa` | Everyone | Accept a pending teleport request. |
 | `!size [0.2-3.0]` | Everyone | Set your player size (`!size 1` resets to normal). |
 | `!level [name]` | Everyone | Show your level, or another player's. |
-| `!tpf [name]` | Mod | Force a player to teleport to you. |
+| `!tpf [name\|@group]` | Mod | Force a player to teleport to you. Groups: `@all`, `@mods`, `@admins`, `@owners`. |
 | `!kick [name] [reason]` | Mod | Kick a player. |
 | `!ban [name\|puid] [reason]` | Admin | Ban a player (use `!unban` to reverse). |
 | `!unban [name\|puid]` | Admin | Remove a ban by name or PUID. |
