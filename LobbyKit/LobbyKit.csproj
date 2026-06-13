@@ -661,6 +661,7 @@
     <Compile Include="Features/PlayerList/PlayerListTimerController.cs" />
     <Compile Include="Features/PlayerList/PlayerListPatches.cs" />
     <Compile Include="ChatSystem.cs" />
+    <Compile Include="Utils/NameMatch.cs" />
     <Compile Include="Utils.cs" />
     <Compile Include="VerboseLog.cs" />
     <Compile Include="Features/Anticheat/PlayerScaleEnforcer.cs" />

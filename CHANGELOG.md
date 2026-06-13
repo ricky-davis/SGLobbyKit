@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.2] - 2026-06-13
+
+### Fixed
+
+- Fuzzy player-name matching now prefers names that actually contain what you typed (as a whole word, prefix, or substring) over names that are merely spelled similarly. Affects every command that takes a player name (`!tp`, `!tpf`, `!kick`, `!ban`, etc.).
+
 ## [1.1.1] - 2026-06-12
 
 ### Added
