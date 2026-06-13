@@ -20,6 +20,7 @@ on:
 
 permissions:
   contents: write
+  actions: read   # read other workflows' runs + download their artifacts (thunderstore-build package)
 
 jobs:
   release:
@@ -71,6 +72,44 @@ jobs:
 
           echo "path=$OUTFILE" >> "$GITHUB_OUTPUT"
 
+      - name: Download Thunderstore package built for this commit
+        id: pkg
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          VERSION="${{ inputs.version }}"
+          SHA="${{ github.sha }}"
+          REPO="${{ github.repository }}"
+          ARTIFACT="thunderstore-package-$VERSION"
+
+          # Find the most recent successful thunderstore-build run for THIS exact commit, so the
+          # release ships the package that was actually built from the released code. The release is
+          # NOT created if the package can't be found — fail here, before the release step.
+          echo "Looking for a successful thunderstore-build run for commit $SHA ..."
+          RUN_ID="$(gh api -X GET "/repos/$REPO/actions/workflows/thunderstore-build.yml/runs" \
+            -f head_sha="$SHA" -f status=success \
+            --jq '.workflow_runs[0].id // empty')"
+
+          if [ -z "$RUN_ID" ]; then
+            echo "::error::No successful thunderstore-build run found for commit $SHA. Push this commit to main so the build runs (and uploads the package), then re-run this workflow. Release not created." >&2
+            exit 1
+          fi
+          echo "Found thunderstore-build run $RUN_ID; downloading artifact '$ARTIFACT'..."
+
+          mkdir -p dist
+          if ! gh run download "$RUN_ID" -n "$ARTIFACT" -D dist; then
+            echo "::error::Artifact '$ARTIFACT' not found in run $RUN_ID (expired, or that build ran in dry-run and uploaded nothing). Release not created." >&2
+            exit 1
+          fi
+
+          ZIP="$(find dist -name '*.zip' | head -n 1)"
+          if [ -z "$ZIP" ]; then
+            echo "::error::No .zip inside artifact '$ARTIFACT'. Release not created." >&2
+            exit 1
+          fi
+          echo "Package asset to attach: $ZIP"
+          echo "zip=$ZIP" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
         env:
           GH_TOKEN: ${{ secrets.RELEASE_WORKFLOW_TOKEN }}
@@ -83,8 +122,11 @@ jobs:
             ARGS+=(--prerelease)
           fi
 
+          # The Thunderstore package built from this commit (the download step fails the job if absent).
+          ASSET="${{ steps.pkg.outputs.zip }}"
+
           NOTES_FILE="${{ steps.notes.outputs.path }}"
-          CMD=(gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" "${ARGS[@]}")
+          CMD=(gh release create "$TAG" --title "$TAG" --notes-file "$NOTES_FILE" "${ARGS[@]}" "$ASSET")
           VIEW_CMD=(gh release view "$TAG")
 
           if [ "$DRYRUN" = "true" ]; then
