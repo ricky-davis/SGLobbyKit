@@ -4,7 +4,7 @@ schemaVersion = "0.0.1"
 [package]
 namespace = "Spyci"
 name = "LobbyKit"
-versionNumber = "1.1.0"
+versionNumber = "1.1.1"
 description = "Host and lobby quality-of-life tools for Sledding Game: bigger lobbies, saved lobby/search settings, player timers, MOTD, and teleport commands."
 websiteUrl = "https://github.com/ricky-davis/SGLobbyKit"
 containsNsfwContent = false

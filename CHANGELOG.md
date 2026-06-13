@@ -2,6 +2,16 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.1] - 2026-06-12
+
+### Added
+
+- `!tpf` group targets: `@all` (alias `@everyone`), `@mods`, `@admins`, and `@owners` force every matching connected player to teleport to you. The level groups match that permission level exactly, and the host's own player is always skipped.
+
+### Fixed
+
+- Removed unecessary CrashDetect log message that bloated log files.
+
 ## [1.1.0] - 2026-06-08
 
 ### Added

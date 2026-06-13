@@ -14,7 +14,7 @@
   </PropertyGroup>
   <PropertyGroup>
     <!-- Centralized package/project version and author -->
-    <Version>1.1.0</Version>
+    <Version>1.1.1</Version>
     <Authors>Spyci</Authors>
   </PropertyGroup>
 </Project>
