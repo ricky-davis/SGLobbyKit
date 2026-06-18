@@ -19,6 +19,7 @@ namespace LobbyKit.Features.Settings
         public int JoinMessageSize { get; set; }
         public int LeaveMessageSize { get; set; }
         public bool AutoRestartOnCrash { get; set; }
+        public bool ShowKickBanMessages { get; set; }
         public bool BlockThrowingSpam { get; set; }
         public bool BlockPlayerSizeCheat { get; set; }
         public bool BlockFlyingSleds { get; set; }
@@ -44,6 +45,7 @@ namespace LobbyKit.Features.Settings
                 JoinMessageSize = LobbyKitCore.JoinMessageSize,
                 LeaveMessageSize = LobbyKitCore.LeaveMessageSize,
                 AutoRestartOnCrash = LobbyKitCore.AutoRestartOnCrash,
+                ShowKickBanMessages = LobbyKitCore.ShowKickBanMessages,
                 BlockThrowingSpam = LobbyKitCore.BlockThrowingSpam,
                 BlockPlayerSizeCheat = LobbyKitCore.BlockPlayerSizeCheat,
                 BlockFlyingSleds = LobbyKitCore.BlockFlyingSleds,
@@ -71,6 +73,7 @@ namespace LobbyKit.Features.Settings
                 JoinMessageSize = JoinMessageSize,
                 LeaveMessageSize = LeaveMessageSize,
                 AutoRestartOnCrash = AutoRestartOnCrash,
+                ShowKickBanMessages = ShowKickBanMessages,
                 BlockThrowingSpam = BlockThrowingSpam,
                 BlockPlayerSizeCheat = BlockPlayerSizeCheat,
                 BlockFlyingSleds = BlockFlyingSleds,
@@ -99,6 +102,7 @@ namespace LobbyKit.Features.Settings
                    JoinMessageSize == other.JoinMessageSize &&
                    LeaveMessageSize == other.LeaveMessageSize &&
                    AutoRestartOnCrash == other.AutoRestartOnCrash &&
+                   ShowKickBanMessages == other.ShowKickBanMessages &&
                    BlockThrowingSpam == other.BlockThrowingSpam &&
                    BlockPlayerSizeCheat == other.BlockPlayerSizeCheat &&
                    BlockFlyingSleds == other.BlockFlyingSleds &&
@@ -123,6 +127,7 @@ namespace LobbyKit.Features.Settings
             LobbyKitCore.SetJoinMessageSize(JoinMessageSize);
             LobbyKitCore.SetLeaveMessageSize(LeaveMessageSize);
             LobbyKitCore.SetAutoRestartOnCrash(AutoRestartOnCrash);
+            LobbyKitCore.SetShowKickBanMessages(ShowKickBanMessages);
             LobbyKitCore.SetBlockThrowingSpam(BlockThrowingSpam);
             LobbyKitCore.SetBlockPlayerSizeCheat(BlockPlayerSizeCheat);
             LobbyKitCore.SetBlockFlyingSleds(BlockFlyingSleds);

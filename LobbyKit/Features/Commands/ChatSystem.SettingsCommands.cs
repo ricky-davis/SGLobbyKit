@@ -86,6 +86,7 @@ namespace LobbyKit.Patches
             SInt ("jmsize",      "Messages", () => LobbyKitCore.JoinMessageSize,    LobbyKitCore.SetJoinMessageSize, 50, 100),
             SBool("lm",          "Messages", () => LobbyKitCore.ShowLeaveMessages,  LobbyKitCore.SetShowLeaveMessages),
             SInt ("lmsize",      "Messages", () => LobbyKitCore.LeaveMessageSize,   LobbyKitCore.SetLeaveMessageSize, 50, 100),
+            SBool("kickmsg",     "Messages", () => LobbyKitCore.ShowKickBanMessages, LobbyKitCore.SetShowKickBanMessages),
 
             SBool("throwspam",   "Anticheat", () => LobbyKitCore.BlockThrowingSpam,    LobbyKitCore.SetBlockThrowingSpam),
             SBool("sizecheat",   "Anticheat", () => LobbyKitCore.BlockPlayerSizeCheat, LobbyKitCore.SetBlockPlayerSizeCheat),

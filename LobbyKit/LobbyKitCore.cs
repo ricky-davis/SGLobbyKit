@@ -48,6 +48,7 @@ namespace LobbyKit
         private static MelonPreferences_Entry<int> _joinMessageSize;
         private static MelonPreferences_Entry<int> _leaveMessageSize;
         private static MelonPreferences_Entry<bool> _autoRestartOnCrash;
+        private static MelonPreferences_Entry<bool> _showKickBanMessages;
         private static MelonPreferences_Entry<bool> _blockThrowingSpam;
         private static MelonPreferences_Entry<bool> _blockPlayerSizeCheat;
         private static MelonPreferences_Entry<bool> _blockFlyingSleds;
@@ -75,6 +76,7 @@ namespace LobbyKit
         public static int JoinMessageSize => _joinMessageSize?.Value ?? 75;
         public static int LeaveMessageSize => _leaveMessageSize?.Value ?? 75;
         public static bool AutoRestartOnCrash => _autoRestartOnCrash?.Value ?? false;
+        public static bool ShowKickBanMessages => _showKickBanMessages?.Value ?? true;
         public static bool BlockThrowingSpam => _blockThrowingSpam?.Value ?? true;
         public static bool BlockPlayerSizeCheat => _blockPlayerSizeCheat?.Value ?? true;
         public static bool BlockFlyingSleds => _blockFlyingSleds?.Value ?? true;
@@ -140,6 +142,7 @@ namespace LobbyKit
             _joinMessageSize = _preferences.CreateEntry("JoinMessageSize", 75, "Join Message Size", "Font size percentage for join messages (e.g. 75 for 75%).");
             _leaveMessageSize = _preferences.CreateEntry("LeaveMessageSize", 75, "Leave Message Size", "Font size percentage for leave messages (e.g. 75 for 75%).");
             _autoRestartOnCrash = _preferences.CreateEntry("AutoRestartOnCrash", false, "Auto-Restart On Crash", "Automatically re-host the lobby when it crashes unexpectedly.");
+            _showKickBanMessages = _preferences.CreateEntry("ShowKickBanMessages", true, "Show Kick/Ban Messages", "Broadcast a chat message when a player is kicked or banned from your hosted lobby.");
             _blockThrowingSpam = _preferences.CreateEntry("BlockThrowingSpam", true, "Block Throwing Spam", "Anticheat: rate-limit and kick clients who spam server RPCs (e.g. rapid throwing).");
             _blockPlayerSizeCheat = _preferences.CreateEntry("BlockPlayerSizeCheat", true, "Block Player Size Cheat", "Anticheat: force each player's avatar to their allowed size (default 1, or their !size choice) and clamp any cheated scale back.");
             _blockFlyingSleds = _preferences.CreateEntry("BlockFlyingSleds", true, "Block Flying Sleds", "Anticheat: no-op the client-initiated Cmd_PushSled (a raw AddForce lever used to fly sleds). Boosts use a separate path and are unaffected.");
@@ -435,7 +438,8 @@ namespace LobbyKit
                 int remaining = RemotePlayerCount - 1; // leaver still counted until RemoveAll below
                 if (Features.Anticheat.KickAnnouncer.TryConsume(removedPlayer.ConnectionID, out string kickReason))
                 {
-                    Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#F44>{username} {kickReason}.");
+                    if (ShowKickBanMessages)
+                        Patches.ChatSystem.BroadcastSystemMessage($"<size={LeaveMessageSize}%><#F44>{username} {kickReason}.");
                     MelonLogger.Msg($"[LobbyKit] - {logName} {kickReason} (conn {removedPlayer.ConnectionID}) — {remaining} online.");
                 }
                 else
@@ -846,6 +850,15 @@ namespace LobbyKit
                 return;
 
             _autoRestartOnCrash.Value = value;
+            MelonPreferences.Save();
+        }
+
+        public static void SetShowKickBanMessages(bool value)
+        {
+            if (_showKickBanMessages == null)
+                return;
+
+            _showKickBanMessages.Value = value;
             MelonPreferences.Save();
         }
 

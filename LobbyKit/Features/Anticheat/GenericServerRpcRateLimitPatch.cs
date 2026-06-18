@@ -12,9 +12,13 @@ namespace LobbyKit.Features.Anticheat
 {
     internal static class GenericServerRpcRateLimitPatch
     {
-        // Set to true to log every ServerRpc call — useful for observing natural call
-        // rates before committing to per-command limits.
-        internal static bool LogAllRpcCalls = true;
+        // DIAGNOSTIC ONLY — keep FALSE in production. When true, the Prefix (which runs on EVERY one of the
+        // 73 patched Cmd_ ServerRpcs, for every call from every player) formats a string and writes a line via
+        // VerboseLog on EVERY call. On a headless server VerboseLog flushes each line to disk synchronously
+        // under a lock, on the main thread that also processes FishNet RPCs — so at ~12 active players the
+        // aggregate Cmd rate × per-write disk latency exceeds the frame budget and the whole server lags.
+        // Leave this off; flip on briefly only to observe natural per-command call rates.
+        internal static bool LogAllRpcCalls = false;
 
         private const int HostConnectionId = 32767;
 

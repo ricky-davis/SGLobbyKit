@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [1.1.3] - 2026-06-18
+
+### Added
+
+- `kickmsg` setting: controls whether a red chat broadcast is sent when a player is kicked or banned. Defaults to on; toggle via `!settings kickmsg on/off` or the Settings menu.
+
 ## [1.1.2] - 2026-06-13
 
 ### Fixed
